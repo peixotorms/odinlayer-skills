@@ -14,7 +14,7 @@ Comprehensive WordPress guidelines as focused Claude Code skills, plus a review 
 | `wp-blocks` | Gutenberg block development (block.json, static/dynamic rendering, InnerBlocks, deprecations), block themes (theme.json, templates, patterns, style variations), Interactivity API (directives, SSR, stores), WordPress 6.9 features, tooling |
 | `wp-rest-api` | Route registration, WP_REST_Controller, JSON Schema validation, permission callbacks, authentication, response shaping, field registration, CPT/taxonomy REST exposure, Abilities API (WordPress 6.9+), error handling |
 | `wp-plugins` | Plugin architecture, lifecycle hooks (activation/deactivation/uninstall), Settings API, data storage, custom tables with dbDelta, WP-CLI commands and operations, PHPStan configuration, PHPCS setup, testing, build and deploy |
-| `wp-apis` | WordPress core APIs for plugin/theme development — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron scheduling, dashboard widgets, users and roles, privacy (GDPR exporters/erasers), advanced hooks |
+| `wp-apis` | WordPress core APIs for plugin/theme development — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron scheduling, dashboard widgets, users and roles, privacy (GDPR), theme mods and Customizer, Site Health, global variables, responsive images, advanced hooks |
 
 **Command:**
 

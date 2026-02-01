@@ -145,7 +145,7 @@ One install gives you all 7 skills. Claude loads only the relevant ones per conv
 | `wp-blocks` | Building Gutenberg blocks, block themes, or using the Interactivity API — block.json, static and dynamic rendering, InnerBlocks, deprecations, theme.json, templates, patterns, data-wp-* directives, server-side rendering, WordPress 6.9 features |
 | `wp-rest-api` | Building WordPress REST API endpoints, custom routes, controllers, or using the Abilities API — route registration, schema validation, permission callbacks, authentication, response shaping, field registration, Abilities API for declarative permissions |
 | `wp-plugins` | Building WordPress plugins or themes — architecture, lifecycle hooks, settings API, data storage, custom tables, WP-CLI commands, PHPStan configuration, PHPCS, testing, build and deploy workflow |
-| `wp-apis` | Working with WordPress core APIs in plugins or themes — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron, dashboard widgets, users and roles, privacy (GDPR), advanced hooks |
+| `wp-apis` | Working with WordPress core APIs in plugins or themes — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron, dashboard widgets, users and roles, privacy (GDPR), theme mods and Customizer, Site Health, global variables, responsive images, advanced hooks |
 
 **Command included:**
 

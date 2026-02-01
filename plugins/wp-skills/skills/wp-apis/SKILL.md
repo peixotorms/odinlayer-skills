@@ -1,13 +1,9 @@
 ---
 name: wp-apis
-description: Use when working with WordPress core APIs in plugins or themes — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron, dashboard widgets, users and roles, privacy tools, and advanced hooks.
+description: Use when working with WordPress core APIs in plugins or themes — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron, dashboard widgets, users and roles, privacy tools, theme mods, site health, global variables, responsive images, and advanced hooks.
 ---
 
 # WordPress Core APIs
-
-Reference for WordPress APIs that plugin and theme developers use daily:
-admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP requests,
-scheduled events, dashboard widgets, user roles, privacy compliance, and extensibility hooks.
 
 ---
 
@@ -59,7 +55,7 @@ add_submenu_page(
 
 ### Form Processing Pattern
 
-Use the `load-{$hook_suffix}` action to process form submissions before output:
+Use `load-{$hook_suffix}` to process form submissions before output:
 
 ```php
 function map_register_menus(): void {
@@ -72,7 +68,6 @@ function map_handle_form_submit(): void {
         return;
     }
     check_admin_referer( 'map_save_action', 'map_nonce' );
-    // Process and save, then redirect to avoid resubmit.
     wp_safe_redirect( add_query_arg( 'updated', '1', wp_get_referer() ) );
     exit;
 }
@@ -81,8 +76,8 @@ function map_handle_form_submit(): void {
 ### Removing Menus
 
 ```php
-remove_menu_page( 'edit-comments.php' );        // Top-level.
-remove_submenu_page( 'options-general.php', 'options-writing.php' ); // Submenu.
+remove_menu_page( 'edit-comments.php' );
+remove_submenu_page( 'options-general.php', 'options-writing.php' );
 ```
 
 ---
@@ -94,14 +89,7 @@ remove_submenu_page( 'options-general.php', 'options-writing.php' ); // Submenu.
 ```php
 add_shortcode( 'map_greeting', 'map_greeting_shortcode' );
 
-/**
- * Handler receives three arguments.
- *
- * @param array|string $atts    User-supplied attributes (or empty string if none).
- * @param string|null  $content Content between opening and closing tags (enclosing shortcode).
- * @param string       $tag     The shortcode tag name itself.
- * @return string               HTML output — always RETURN, never echo.
- */
+// Handler: ($atts, $content, $tag) — always RETURN, never echo.
 function map_greeting_shortcode( $atts, $content = null, $tag = '' ): string {
     $atts = shortcode_atts(
         array(
@@ -140,7 +128,6 @@ function map_box_shortcode( $atts, $content = null ): string {
 - **Return, don't echo** — shortcodes must return HTML, any `echo` corrupts page layout.
 - **Prefix names** — use a unique prefix (`map_`) to avoid collisions.
 - **Escape output** — all attribute values through `esc_attr()` / `esc_html()`.
-- **Remove on deactivation** — call `remove_shortcode()` if needed for cleanup.
 
 ---
 
@@ -184,21 +171,17 @@ function map_render_details_meta_box( WP_Post $post ): void {
 add_action( 'save_post', 'map_save_detail_meta', 10, 2 );
 
 function map_save_detail_meta( int $post_id, WP_Post $post ): void {
-    // 1. Verify nonce.
     if ( ! isset( $_POST['map_detail_nonce'] )
         || ! wp_verify_nonce( $_POST['map_detail_nonce'], 'map_save_detail' )
     ) {
         return;
     }
-    // 2. Skip autosave.
     if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
         return;
     }
-    // 3. Check permissions.
     if ( ! current_user_can( 'edit_post', $post_id ) ) {
         return;
     }
-    // 4. Sanitize and save.
     if ( isset( $_POST['map_detail'] ) ) {
         update_post_meta(
             $post_id,
@@ -219,7 +202,7 @@ class MAP_Detail_Meta_Box {
     }
     public static function add(): void { /* add_meta_box(...) */ }
     public static function render( WP_Post $post ): void { /* output fields */ }
-    public static function save( int $post_id, WP_Post $post ): void { /* save meta */ }
+    public static function save( int $post_id, WP_Post $post ): void { /* verify nonce + save */ }
 }
 MAP_Detail_Meta_Box::register();
 ```
@@ -227,10 +210,8 @@ MAP_Detail_Meta_Box::register();
 ### Removing Meta Boxes
 
 ```php
-add_action( 'do_meta_boxes', function (): void {
-    remove_meta_box( 'postcustom', 'post', 'normal' );   // Custom Fields.
-    remove_meta_box( 'slugdiv', 'post', 'normal' );      // Slug.
-} );
+remove_meta_box( 'postcustom', 'post', 'normal' );   // Custom Fields.
+remove_meta_box( 'slugdiv', 'post', 'normal' );      // Slug.
 ```
 
 ---
@@ -310,8 +291,6 @@ register_activation_hook( __FILE__, function (): void {
 
 ### Template Hierarchy for CPTs
 
-WordPress looks for templates in this order:
-
 | Template File                      | When                        |
 |------------------------------------|-----------------------------|
 | `single-map_portfolio.php`        | Single CPT post             |
@@ -335,13 +314,15 @@ $response = wp_remote_get( 'https://api.example.com/data', array(
 ) );
 
 if ( is_wp_error( $response ) ) {
-    error_log( 'API error: ' . $response->get_error_message() );
-    return;
+    return new WP_Error( 'api_failure', $response->get_error_message() );
 }
 
 $code = wp_remote_retrieve_response_code( $response );
-$body = wp_remote_retrieve_body( $response );
-$data = json_decode( $body, true );
+if ( $code < 200 || $code >= 300 ) {
+    return new WP_Error( 'api_http_error', "HTTP {$code}" );
+}
+
+$data = json_decode( wp_remote_retrieve_body( $response ), true );
 ```
 
 ### POST Request
@@ -350,9 +331,7 @@ $data = json_decode( $body, true );
 $response = wp_remote_post( 'https://api.example.com/submit', array(
     'timeout' => 30,
     'body'    => wp_json_encode( array( 'name' => 'Alice' ) ),
-    'headers' => array(
-        'Content-Type' => 'application/json',
-    ),
+    'headers' => array( 'Content-Type' => 'application/json' ),
 ) );
 ```
 
@@ -366,24 +345,6 @@ $response = wp_remote_post( 'https://api.example.com/submit', array(
 | `httpversion` | `1.0`          | Use `1.1` for keep-alive.             |
 | `sslverify`   | `true`         | **Never disable in production.**       |
 | `blocking`    | `true`         | `false` = fire-and-forget.             |
-| `user-agent`  | WordPress/X.Y  | Override for API requirements.         |
-
-### Error Checking
-
-Always check errors before using the response:
-
-```php
-if ( is_wp_error( $response ) ) {
-    // Network-level failure (DNS, timeout, connection refused).
-    return new WP_Error( 'api_failure', $response->get_error_message() );
-}
-
-$code = wp_remote_retrieve_response_code( $response );
-if ( $code < 200 || $code >= 300 ) {
-    // HTTP error (4xx, 5xx).
-    return new WP_Error( 'api_http_error', "HTTP {$code}" );
-}
-```
 
 ### Caching External Requests with Transients
 
@@ -425,20 +386,14 @@ function map_activate_cron(): void {
 }
 
 add_action( 'map_daily_cleanup', 'map_run_cleanup' );
-
-function map_run_cleanup(): void {
-    // Perform daily maintenance task.
-}
+function map_run_cleanup(): void { /* daily maintenance */ }
 ```
 
 ### Single Event
 
 ```php
 wp_schedule_single_event( time() + 300, 'map_deferred_task', array( $post_id ) );
-
-add_action( 'map_deferred_task', function ( int $post_id ): void {
-    // Runs once, ~5 minutes later.
-} );
+add_action( 'map_deferred_task', function ( int $post_id ): void { /* runs once */ } );
 ```
 
 ### Custom Intervals
@@ -466,25 +421,21 @@ register_deactivation_hook( __FILE__, function (): void {
 
 ### Real Cron for Production
 
-WP-Cron is triggered by page visits — unreliable on low-traffic sites.
+WP-Cron is triggered by page visits — unreliable on low-traffic sites:
 
 ```php
-// wp-config.php
+// wp-config.php — disable virtual cron.
 define( 'DISABLE_WP_CRON', true );
 ```
 
 ```bash
-# System crontab — runs WP-Cron every minute.
-* * * * * curl -s https://example.com/wp-cron.php?doing_wp_cron > /dev/null 2>&1
-# Or use WP-CLI:
+# System crontab — trigger WP-Cron every minute via WP-CLI.
 * * * * * cd /var/www/html && wp cron event run --due-now > /dev/null 2>&1
 ```
 
 ---
 
 ## 7. Dashboard Widgets
-
-### Basic Widget
 
 ```php
 add_action( 'wp_dashboard_setup', 'map_add_dashboard_widget' );
@@ -501,29 +452,12 @@ function map_render_status_widget(): void {
     $count = wp_count_posts( 'map_portfolio' );
     printf(
         '<p>%s</p>',
-        sprintf(
-            /* translators: %d: number of published projects */
-            esc_html__( 'Published projects: %d', 'my-plugin' ),
-            absint( $count->publish )
-        )
+        sprintf( esc_html__( 'Published projects: %d', 'my-plugin' ), absint( $count->publish ) )
     );
 }
 ```
 
-### Side Column Placement
-
-`wp_add_dashboard_widget()` places widgets in the main column. For the side column:
-
-```php
-add_meta_box(
-    'map_quick_stats',
-    __( 'Quick Stats', 'my-plugin' ),
-    'map_render_quick_stats',
-    'dashboard',        // Screen = dashboard.
-    'side',             // Context = side column.
-    'high'              // Priority.
-);
-```
+For side column placement, use `add_meta_box()` with `'dashboard'` screen and `'side'` context.
 
 ### Removing Default Widgets
 
@@ -541,20 +475,18 @@ add_action( 'wp_dashboard_setup', function (): void {
 ### Adding a Custom Role
 
 ```php
-// Run once on activation — roles are stored in the database.
+// Run once on activation — roles persist in the database.
 register_activation_hook( __FILE__, function (): void {
     add_role( 'map_project_manager', __( 'Project Manager', 'my-plugin' ), array(
-        'read'                    => true,
-        'edit_posts'              => true,
-        'delete_posts'            => true,
-        'publish_posts'           => true,
-        'upload_files'            => true,
-        'edit_published_posts'    => true,
-        'delete_published_posts'  => true,
+        'read'         => true,
+        'edit_posts'   => true,
+        'delete_posts' => true,
+        'publish_posts' => true,
+        'upload_files'  => true,
     ) );
 } );
 
-// Remove on uninstall.
+// Clean up on uninstall.
 register_uninstall_hook( __FILE__, function (): void {
     remove_role( 'map_project_manager' );
 } );
@@ -563,31 +495,22 @@ register_uninstall_hook( __FILE__, function (): void {
 ### Custom Capabilities
 
 ```php
-register_activation_hook( __FILE__, function (): void {
-    $admin = get_role( 'administrator' );
-    if ( $admin ) {
-        $admin->add_cap( 'manage_map_settings' );
-        $admin->add_cap( 'edit_map_projects' );
-    }
-} );
+// Add on activation:
+$admin = get_role( 'administrator' );
+if ( $admin ) {
+    $admin->add_cap( 'manage_map_settings' );
+}
 
 // Check in code:
-if ( current_user_can( 'manage_map_settings' ) ) {
-    // Show admin-only UI.
-}
+if ( current_user_can( 'manage_map_settings' ) ) { /* admin-only UI */ }
 ```
 
 ### User Meta
 
 ```php
-// Store.
-update_user_meta( $user_id, '_map_onboarded', '1' );
-
-// Retrieve.
-$onboarded = get_user_meta( $user_id, '_map_onboarded', true );
-
-// Delete.
-delete_user_meta( $user_id, '_map_onboarded' );
+update_user_meta( $user_id, '_map_onboarded', '1' );           // Store.
+$val = get_user_meta( $user_id, '_map_onboarded', true );       // Retrieve.
+delete_user_meta( $user_id, '_map_onboarded' );                 // Delete.
 ```
 
 ### Querying Users
@@ -599,25 +522,19 @@ $query = new WP_User_Query( array(
     'order'      => 'DESC',
     'number'     => 20,
     'meta_query' => array(                    // phpcs:ignore WordPress.DB.SlowDBQuery
-        array(
-            'key'     => '_map_onboarded',
-            'value'   => '1',
-            'compare' => '=',
-        ),
+        array( 'key' => '_map_onboarded', 'value' => '1', 'compare' => '=' ),
     ),
 ) );
 
-foreach ( $query->get_results() as $user ) {
-    // $user is a WP_User object.
-}
+foreach ( $query->get_results() as $user ) { /* WP_User */ }
 ```
 
 ---
 
 ## 9. Privacy API
 
-WordPress 4.9.6+ includes tools for GDPR/privacy compliance. Plugins that store
-personal data should register exporters and erasers.
+WordPress 4.9.6+ includes GDPR/privacy tools. Plugins storing personal data
+should register exporters and erasers.
 
 ### Personal Data Exporter
 
@@ -638,105 +555,362 @@ function map_privacy_exporter( string $email, int $page = 1 ): array {
         $pref = get_user_meta( $user->ID, '_map_preference', true );
         if ( $pref ) {
             $data[] = array(
-                'group_id'          => 'map-preferences',
-                'group_label'       => __( 'Plugin Preferences', 'my-plugin' ),
-                'group_description' => __( 'Settings stored by My Plugin.', 'my-plugin' ),
-                'item_id'           => "map-pref-{$user->ID}",
-                'data'              => array(
-                    array(
-                        'name'  => __( 'Preference', 'my-plugin' ),
-                        'value' => $pref,
-                    ),
+                'group_id'    => 'map-preferences',
+                'group_label' => __( 'Plugin Preferences', 'my-plugin' ),
+                'item_id'     => "map-pref-{$user->ID}",
+                'data'        => array(
+                    array( 'name' => __( 'Preference', 'my-plugin' ), 'value' => $pref ),
                 ),
             );
         }
     }
 
-    return array(
-        'data' => $data,
-        'done' => true,     // Set false + increment $page for large datasets.
-    );
+    return array( 'data' => $data, 'done' => true );
+    // Set 'done' => false and increment $page for large datasets.
 }
 ```
 
 ### Personal Data Eraser
 
+Same pattern — register via `wp_privacy_personal_data_erasers` filter. Callback returns:
+
 ```php
-add_filter( 'wp_privacy_personal_data_erasers', function ( array $erasers ): array {
-    $erasers['my-plugin'] = array(
-        'eraser_friendly_name' => __( 'My Plugin Data', 'my-plugin' ),
-        'callback'             => 'map_privacy_eraser',
-    );
-    return $erasers;
-} );
-
-function map_privacy_eraser( string $email, int $page = 1 ): array {
-    $user          = get_user_by( 'email', $email );
-    $items_removed = 0;
-
-    if ( $user ) {
-        $deleted = delete_user_meta( $user->ID, '_map_preference' );
-        if ( $deleted ) {
-            ++$items_removed;
-        }
-    }
-
-    return array(
-        'items_removed'  => $items_removed,
-        'items_retained' => 0,
-        'messages'       => array(),
-        'done'           => true,
-    );
-}
+return array(
+    'items_removed'  => $count,    // How many items were erased.
+    'items_retained' => 0,         // Items kept (with reason in 'messages').
+    'messages'       => array(),   // Human-readable notes.
+    'done'           => true,      // false + $page for pagination.
+);
 ```
 
 ### Privacy Policy Suggestion
 
 ```php
 add_action( 'admin_init', function (): void {
-    if ( ! function_exists( 'wp_add_privacy_policy_content' ) ) {
-        return;
+    if ( function_exists( 'wp_add_privacy_policy_content' ) ) {
+        wp_add_privacy_policy_content(
+            __( 'My Plugin', 'my-plugin' ),
+            wp_kses_post( __( '<p>This plugin stores your preferences.</p>', 'my-plugin' ) )
+        );
     }
-    wp_add_privacy_policy_content(
-        __( 'My Plugin', 'my-plugin' ),
-        wp_kses_post( __( '<p>This plugin stores your preferences in your user profile.</p>', 'my-plugin' ) )
-    );
 } );
 ```
 
 ---
 
-## 10. Advanced Hooks
+## 10. Theme Modification API
+
+Theme mods are settings scoped to the active theme. Unlike options (global), they
+travel with the theme — switching themes resets to that theme's stored mods.
+
+### Core Functions
+
+```php
+// Store a mod for the current theme.
+set_theme_mod( 'header_color', '#ff6600' );
+
+// Retrieve with a fallback default.
+$color = get_theme_mod( 'header_color', '#000000' );
+
+// Remove a single mod.
+remove_theme_mod( 'header_color' );
+
+// Retrieve all mods for the active theme (returns array or empty array).
+$all_mods = get_theme_mods();
+```
+
+### Customizer Integration
+
+Theme mods are the standard storage backend for the Customizer:
+
+```php
+add_action( 'customize_register', function ( WP_Customize_Manager $wp_customize ): void {
+    $wp_customize->add_setting( 'map_accent_color', array(
+        'default'           => '#0073aa',
+        'type'              => 'theme_mod',        // Default — stored per-theme.
+        'sanitize_callback' => 'sanitize_hex_color',
+        'transport'         => 'postMessage',       // Live preview via JS.
+    ) );
+
+    $wp_customize->add_control( new WP_Customize_Color_Control(
+        $wp_customize,
+        'map_accent_color',
+        array(
+            'label'   => __( 'Accent Color', 'my-theme' ),
+            'section' => 'colors',
+        )
+    ) );
+} );
+```
+
+### Using Theme Mods in Templates
+
+```php
+<style>
+    .site-header { background-color: <?php echo esc_attr( get_theme_mod( 'header_color', '#fff' ) ); ?>; }
+</style>
+```
+
+### Theme Mod vs Option
+
+| Feature             | `theme_mod`                      | `option`                   |
+|---------------------|----------------------------------|----------------------------|
+| Scope               | Per-theme                        | Global (all themes)        |
+| Switching themes    | Reverts to new theme's values    | Persists                   |
+| Storage             | Single `theme_mods_{$theme}` row | Individual option rows     |
+| Customizer default  | Yes (`type => 'theme_mod'`)      | Must set `type => 'option'`|
+| Filter              | `theme_mod_{$name}`              | `option_{$name}`           |
+
+Use `theme_mod` for visual/display settings. Use `option` for functional plugin settings.
+
+---
+
+## 11. Site Health API
+
+The Site Health screen (Tools → Site Health) can be extended with custom tabs and
+debug information sections.
+
+### Custom Tab
+
+```php
+add_filter( 'site_health_navigation_tabs', function ( array $tabs ): array {
+    $tabs['map-status'] = esc_html__( 'Plugin Status', 'my-plugin' );
+    return $tabs;
+} );
+
+add_action( 'site_health_tab_content', function ( string $tab ): void {
+    if ( 'map-status' !== $tab ) {
+        return;
+    }
+    echo '<div class="health-check-body">';
+    // Render tab content.
+    echo '</div>';
+} );
+```
+
+### Custom Status Test
+
+```php
+add_filter( 'site_status_tests', function ( array $tests ): array {
+    $tests['direct']['map_check'] = array(
+        'label' => __( 'My Plugin Check', 'my-plugin' ),
+        'test'  => 'map_site_health_test',
+    );
+    return $tests;
+} );
+
+function map_site_health_test(): array {
+    $result = array(
+        'label'       => __( 'My Plugin is configured', 'my-plugin' ),
+        'status'      => 'good',             // good | recommended | critical.
+        'badge'       => array(
+            'label' => __( 'Performance', 'my-plugin' ),
+            'color' => 'blue',               // blue | green | red | orange | purple | gray.
+        ),
+        'description' => '<p>' . __( 'Everything looks good.', 'my-plugin' ) . '</p>',
+        'actions'     => '',                  // HTML for action links.
+        'test'        => 'map_check',         // Must match the key above.
+    );
+
+    if ( ! get_option( 'map_api_key' ) ) {
+        $result['status']      = 'recommended';
+        $result['label']       = __( 'My Plugin API key is missing', 'my-plugin' );
+        $result['description'] = '<p>' . __( 'Add an API key for full functionality.', 'my-plugin' ) . '</p>';
+    }
+
+    return $result;
+}
+```
+
+### Debug Information Section
+
+```php
+add_filter( 'debug_information', function ( array $info ): array {
+    $info['my-plugin'] = array(
+        'label'  => __( 'My Plugin', 'my-plugin' ),
+        'fields' => array(
+            'version' => array(
+                'label' => __( 'Version', 'my-plugin' ),
+                'value' => MAP_VERSION,
+            ),
+            'api_connected' => array(
+                'label' => __( 'API Connected', 'my-plugin' ),
+                'value' => get_option( 'map_api_key' ) ? __( 'Yes' ) : __( 'No' ),
+            ),
+        ),
+    );
+    return $info;
+} );
+```
+
+---
+
+## 12. Global Variables
+
+WordPress uses global variables throughout its codebase. Prefer API functions
+when available; use globals only when no function exists.
+
+### Access Pattern
+
+```php
+global $post;
+// Now $post is available as WP_Post|null.
+```
+
+### Inside the Loop
+
+| Variable        | Type       | Description                              |
+|-----------------|------------|------------------------------------------|
+| `$post`         | `WP_Post`  | Current post being processed             |
+| `$authordata`   | `WP_User`  | Current post's author                    |
+| `$page`         | `int`      | Current page of a paginated post         |
+| `$multipage`    | `bool`     | Whether post has `<!--nextpage-->` splits|
+| `$numpages`     | `int`      | Total pages in paginated post            |
+| `$more`         | `bool`     | Whether to show content past `<!--more-->`|
+
+### Core Objects
+
+| Variable          | Type          | Preferred API                          |
+|-------------------|---------------|----------------------------------------|
+| `$wpdb`           | `wpdb`        | No alternative — use directly          |
+| `$wp_query`       | `WP_Query`    | Template tags: `have_posts()`, `the_post()` |
+| `$wp_rewrite`     | `WP_Rewrite`  | `get_option('permalink_structure')`    |
+| `$wp_roles`       | `WP_Roles`    | `wp_roles()`, `current_user_can()`     |
+| `$wp_admin_bar`   | `WP_Admin_Bar`| `add_action('admin_bar_menu', ...)`    |
+| `$wp_locale`      | `WP_Locale`   | `wp_date()`, `date_i18n()`            |
+
+### Admin & Version
+
+| Variable          | Type     | Description                            |
+|-------------------|----------|----------------------------------------|
+| `$pagenow`        | `string` | Current admin page filename            |
+| `$post_type`      | `string` | Current post type in admin screens     |
+| `$wp_version`     | `string` | WordPress version number               |
+| `$wp_db_version`  | `int`    | Database schema version                |
+
+### Server Detection
+
+| Variable      | Type   | True when...        |
+|---------------|--------|---------------------|
+| `$is_apache`  | `bool` | Running on Apache   |
+| `$is_nginx`   | `bool` | Running on Nginx    |
+| `$is_IIS`     | `bool` | Running on IIS      |
+
+### Best Practices
+
+- **Use API functions first** — `get_queried_object()` instead of `global $wp_query; $wp_query->get_queried_object()`.
+- **Always declare `global`** before use: `global $wpdb;`
+- **Never modify** `$post` without `wp_reset_postdata()` afterward.
+- **`$wpdb` is the exception** — it has no wrapper and must be used directly for custom queries.
+
+---
+
+## 13. Responsive Images
+
+WordPress 4.4+ automatically adds `srcset` and `sizes` attributes to images,
+letting browsers pick the optimal file for the viewport and pixel density.
+
+### Default Behavior
+
+When you use `wp_get_attachment_image()` or insert images in the editor, WordPress
+generates markup like:
+
+```html
+<img src="image-768x512.jpg"
+     srcset="image-300x200.jpg 300w, image-768x512.jpg 768w, image-1024x683.jpg 1024w"
+     sizes="(max-width: 768px) 100vw, 768px"
+     alt="...">
+```
+
+### Key Functions
+
+```php
+// Full <img> tag with srcset/sizes.
+echo wp_get_attachment_image( $attachment_id, 'medium' );
+
+// Just the srcset value string.
+$srcset = wp_get_attachment_image_srcset( $attachment_id, 'medium' );
+
+// Just the sizes value string.
+$sizes = wp_get_attachment_image_sizes( $attachment_id, 'medium' );
+```
+
+### Custom Image Sizes
+
+```php
+add_action( 'after_setup_theme', function (): void {
+    add_image_size( 'hero', 1200, 600, true );      // Hard crop.
+    add_image_size( 'card', 400, 300, true );
+} );
+```
+
+New sizes are included in `srcset` automatically if they match the original's aspect ratio.
+
+### Customizing `sizes` Attribute
+
+The default `sizes` assumes full-width (`100vw` up to image width). Override for your layout:
+
+```php
+add_filter( 'wp_calculate_image_sizes', function ( string $sizes, array $size, ?string $image_src, ?array $image_meta, int $attachment_id ): string {
+    // Two-column layout: images are 50% wide above 768px.
+    return '(max-width: 768px) 100vw, 50vw';
+}, 10, 5 );
+```
+
+### Customizing `srcset` Sources
+
+```php
+add_filter( 'wp_calculate_image_srcset', function ( array $sources, array $size_array, string $image_src, array $image_meta, int $attachment_id ): array {
+    // Remove sources wider than 1600px.
+    foreach ( $sources as $width => $source ) {
+        if ( $width > 1600 ) {
+            unset( $sources[ $width ] );
+        }
+    }
+    return $sources;
+}, 10, 5 );
+```
+
+### Max Width
+
+The `max_srcset_image_width` filter caps which sizes appear in `srcset` (default: 2048px):
+
+```php
+add_filter( 'max_srcset_image_width', function (): int {
+    return 1600; // Don't include anything wider than 1600px.
+} );
+```
+
+### Lazy Loading
+
+WordPress 5.5+ adds `loading="lazy"` to images and iframes automatically.
+Override per-image via the `wp_img_tag_add_loading_optimization_attrs` filter or
+by passing `'loading' => 'eager'` to `wp_get_attachment_image()` for above-the-fold images.
+
+---
+
+## 14. Advanced Hooks
 
 ### Removing Actions & Filters
 
 Removal must happen after the original `add_action()` has run and at the same priority:
 
 ```php
-// Original added at priority 10 (default).
-// Remove during plugins_loaded or later:
 add_action( 'plugins_loaded', function (): void {
-    remove_action( 'wp_head', 'wp_generator' );            // Default priority 10.
-    remove_filter( 'the_content', 'wpautop' );             // Default priority 10.
+    remove_action( 'wp_head', 'wp_generator' );
+    remove_filter( 'the_content', 'wpautop' );
 } );
 ```
 
-For class-based hooks, you need the exact instance:
-
-```php
-// If the plugin stores a global: remove_action( 'init', array( $instance, 'init' ) );
-// If it doesn't — you may need to use the same priority or $wp_filter global (fragile).
-```
+For class-based hooks, you need the exact instance or use the `$wp_filter` global (fragile).
 
 ### Single-Run Guards
 
 ```php
 add_action( 'save_post', function ( int $post_id ): void {
-    // did_action() returns how many times the action has fired.
     if ( did_action( 'save_post' ) > 1 ) {
         return;     // Prevent recursive triggers.
     }
-    // Safe to call wp_update_post() or similar here.
 } );
 ```
 
@@ -754,32 +928,19 @@ add_action( 'save_post', function ( int $post_id ): void {
 
 ### Making Your Plugin Extensible
 
-Provide hooks so other developers can extend your plugin without modifying its source:
-
 ```php
 // Action — let others react to events.
-function map_process_order( array $order ): void {
-    // Core processing...
-    do_action( 'map_order_processed', $order );
-}
+do_action( 'map_order_processed', $order );
 
 // Filter — let others modify data.
-function map_get_display_name( int $user_id ): string {
-    $name = get_user_meta( $user_id, 'display_name', true );
-    return apply_filters( 'map_display_name', $name, $user_id );
-}
+$name = apply_filters( 'map_display_name', $name, $user_id );
 ```
 
-**Rules for extensibility hooks:**
-
-- Prefix all hook names with your plugin prefix.
-- Document hooks with `@since`, `@param`, and example usage in PHPDoc.
-- Pass enough context parameters for downstream consumers.
-- Don't change hook signatures after release (breaking change).
+Rules: prefix all hook names, document with `@since`/`@param`, pass enough context, never change signatures after release.
 
 ---
 
-## 11. Common Mistakes
+## 15. Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
@@ -789,9 +950,12 @@ function map_get_display_name( int $user_id ): string {
 | Saving meta without nonce/capability check | Verify nonce, check `DOING_AUTOSAVE`, check `current_user_can()` |
 | Scheduling cron without `wp_next_scheduled()` guard | Always check first or you create duplicate events |
 | Not cleaning up cron on deactivation | `wp_unschedule_event()` in `register_deactivation_hook` |
-| Using `$wpdb->query()` for HTTP API work | Use `wp_remote_get()` / `wp_remote_post()` — WordPress HTTP API handles proxies, SSL, redirects |
+| Using `$wpdb->query()` for HTTP API work | Use `wp_remote_get()` / `wp_remote_post()` |
 | Disabling `sslverify` in production | Only disable for local development; never in production |
 | Adding roles/caps on every page load | Roles persist in DB — add on activation, remove on uninstall |
 | Forgetting `show_in_rest => true` on CPTs | Required for Block Editor and REST API access |
-| Not paginating privacy exporters/erasers | For large datasets, set `done => false` and use `$page` parameter |
+| Not paginating privacy exporters/erasers | Set `done => false` and use `$page` parameter |
 | Calling `remove_action()` too early | Must run after the original `add_action()` and match priority |
+| Using `get_option()` for theme-specific settings | Use `get_theme_mod()` — values travel with the theme |
+| Modifying `$post` global without reset | Always call `wp_reset_postdata()` after custom loops |
+| Hardcoding image sizes in `srcset` | Use `wp_calculate_image_srcset` filter instead |
