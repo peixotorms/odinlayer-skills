@@ -37,345 +37,43 @@ Security is always in scope. The other four are selected based on what your serv
 
 ## 4. Access Controls (CC6)
 
-### 4.1 RBAC Implementation
+### Key Principles
 
-Define roles with explicit permissions. Never check for specific users — always check roles or permissions.
+- **RBAC over user checks** — Define roles with explicit permissions. Never check for specific users; always check roles or permissions.
+- **Least privilege** — Start with zero access, grant only what is needed. Scoped API keys, not global keys.
+- **Audit everything** — Log every authorization decision (granted and denied) with user ID, resource, permission, IP, and timestamp.
+- **Session limits** — 15-minute idle timeout, 12-hour absolute timeout, maximum 3 concurrent sessions per user, secure cookie flags (HttpOnly, Secure, SameSite=Strict).
+- **MFA for sensitive actions** — Require MFA for admin operations, data export, role changes, and API key management.
+- **API key hygiene** — Hash keys at rest (never store plaintext), enforce expiration (90 days max), scope to specific permissions, show raw key only once at creation.
+- **Quarterly access reviews** — Export active users with roles and last login; flag accounts inactive 90+ days for deprovisioning; audit all permission changes.
+- **Deprovisioning checklist** — On termination: deactivate account, terminate all sessions, revoke all API keys, revoke OAuth tokens, remove from all groups. Log every step.
 
-```python
-# Python — Role-based access middleware
-from functools import wraps
-from enum import Enum
-
-class Permission(Enum):
-    READ_DATA = "read:data"
-    WRITE_DATA = "write:data"
-    MANAGE_USERS = "manage:users"
-    ADMIN_SETTINGS = "admin:settings"
-    VIEW_AUDIT_LOG = "view:audit_log"
-
-ROLE_PERMISSIONS = {
-    "viewer":  [Permission.READ_DATA],
-    "editor":  [Permission.READ_DATA, Permission.WRITE_DATA],
-    "admin":   [Permission.READ_DATA, Permission.WRITE_DATA, Permission.MANAGE_USERS,
-                Permission.VIEW_AUDIT_LOG],
-    "owner":   [p for p in Permission],
-}
-
-def require_permission(permission: Permission):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(request, *args, **kwargs):
-            user = get_authenticated_user(request)
-            user_permissions = ROLE_PERMISSIONS.get(user.role, [])
-            if permission not in user_permissions:
-                audit_log("authorization_denied", user=user.id,
-                          resource=request.path, permission=permission.value)
-                raise ForbiddenError("Insufficient permissions")
-            audit_log("authorization_granted", user=user.id,
-                      resource=request.path, permission=permission.value)
-            return func(request, *args, **kwargs)
-        return wrapper
-    return decorator
-
-@require_permission(Permission.MANAGE_USERS)
-def create_user(request):
-    # Only admin and owner roles reach here
-    pass
-```
-
-```javascript
-// Node.js — Express middleware for RBAC
-function requirePermission(permission) {
-  return (req, res, next) => {
-    const user = req.authenticatedUser;
-    const userPerms = getRolePermissions(user.role);
-
-    if (!userPerms.includes(permission)) {
-      auditLog({
-        event: "authorization_denied",
-        userId: user.id,
-        resource: req.path,
-        permission,
-        ip: req.ip,
-        timestamp: new Date().toISOString(),
-      });
-      return res.status(403).json({ error: "Insufficient permissions" });
-    }
-
-    auditLog({
-      event: "authorization_granted",
-      userId: user.id,
-      resource: req.path,
-      permission,
-      ip: req.ip,
-      timestamp: new Date().toISOString(),
-    });
-    next();
-  };
-}
-
-router.post("/users", requirePermission("manage:users"), createUser);
-router.get("/data", requirePermission("read:data"), getData);
-```
-
-### 4.2 Session Management
-
-```python
-SESSION_CONFIG = {
-    "max_idle_timeout_minutes": 15,         # CC6: Auto-logout after inactivity
-    "max_absolute_timeout_hours": 12,       # CC6: Force re-auth after 12 hours
-    "max_concurrent_sessions": 3,           # CC6: Limit parallel sessions
-    "require_mfa_for_sensitive_actions": True,
-    "rotate_session_id_on_auth": True,      # Prevent session fixation
-    "secure_cookie_flags": {
-        "httponly": True,
-        "secure": True,
-        "samesite": "Strict",
-    },
-}
-
-def validate_session(session):
-    now = datetime.utcnow()
-    if now - session.last_activity > timedelta(minutes=15):
-        terminate_session(session.id, reason="idle_timeout")
-        audit_log("session_expired", session_id=session.id, reason="idle_timeout")
-        raise SessionExpiredError()
-    if now - session.created_at > timedelta(hours=12):
-        terminate_session(session.id, reason="absolute_timeout")
-        audit_log("session_expired", session_id=session.id, reason="absolute_timeout")
-        raise SessionExpiredError()
-    session.last_activity = now
-```
-
-### 4.3 API Key Management
-
-```python
-def create_api_key(user_id, scopes, expires_days=90):
-    """Create scoped, expiring API key with audit trail."""
-    key_id = generate_uuid()
-    raw_key = generate_secure_random(32)
-    hashed_key = hash_with_salt(raw_key)
-
-    store_api_key({
-        "key_id": key_id,
-        "hashed_key": hashed_key,
-        "user_id": user_id,
-        "scopes": scopes,               # Least privilege: only needed permissions
-        "created_at": utcnow(),
-        "expires_at": utcnow() + timedelta(days=expires_days),
-        "last_used_at": None,
-        "last_rotated_at": utcnow(),
-    })
-    audit_log("api_key_created", user_id=user_id, key_id=key_id, scopes=scopes)
-    return {"key_id": key_id, "key": raw_key}  # Raw key shown once only
-
-def validate_api_key(raw_key):
-    hashed = hash_with_salt(raw_key)
-    key_record = find_key_by_hash(hashed)
-    if not key_record:
-        raise AuthenticationError("Invalid API key")
-    if key_record.expires_at < utcnow():
-        audit_log("api_key_expired", key_id=key_record.key_id)
-        raise AuthenticationError("API key expired")
-    key_record.last_used_at = utcnow()
-    return key_record
-```
-
-### 4.4 Access Review Queries
-
-```sql
--- CC6: Quarterly access review — who has access and when they last used it
-SELECT
-    u.id,
-    u.email,
-    u.role,
-    u.created_at,
-    u.last_login_at,
-    u.mfa_enabled,
-    DATEDIFF(CURRENT_DATE, u.last_login_at) AS days_since_last_login
-FROM users u
-WHERE u.is_active = TRUE
-ORDER BY u.last_login_at ASC;
-
--- Flag accounts inactive for 90+ days for deprovisioning review
-SELECT id, email, role, last_login_at
-FROM users
-WHERE is_active = TRUE
-  AND (last_login_at IS NULL OR last_login_at < DATE_SUB(CURRENT_DATE, INTERVAL 90 DAY));
-
--- Audit: all permission changes in the last quarter
-SELECT
-    al.timestamp,
-    al.actor_user_id,
-    al.target_user_id,
-    al.action,
-    al.old_role,
-    al.new_role
-FROM audit_log al
-WHERE al.action IN ('role_changed', 'user_activated', 'user_deactivated')
-  AND al.timestamp >= DATE_SUB(CURRENT_DATE, INTERVAL 90 DAY)
-ORDER BY al.timestamp DESC;
-```
-
-### 4.5 User Deprovisioning
-
-```python
-def deprovision_user(user_id, reason, actor_id):
-    """Immediately revoke all access when an employee leaves or role changes."""
-    user = get_user(user_id)
-
-    # 1. Deactivate account
-    user.is_active = False
-    user.deactivated_at = utcnow()
-    user.deactivated_by = actor_id
-    user.deactivation_reason = reason
-
-    # 2. Terminate all active sessions
-    terminate_all_sessions(user_id)
-
-    # 3. Revoke all API keys
-    revoke_all_api_keys(user_id)
-
-    # 4. Revoke all OAuth tokens
-    revoke_all_oauth_tokens(user_id)
-
-    # 5. Remove from all groups/teams
-    remove_from_all_groups(user_id)
-
-    audit_log("user_deprovisioned", target_user=user_id, actor=actor_id,
-              reason=reason, actions=["deactivated", "sessions_terminated",
-              "api_keys_revoked", "oauth_revoked", "groups_removed"])
-```
+> Implementation code: RBAC middleware (Python, Node.js), session management, API key lifecycle, access review SQL queries, deprovisioning automation — see [resources/access-encryption.md](resources/access-encryption.md)
 
 ## 5. Encryption Standards
 
-### 5.1 Encryption at Rest
+### Requirements
 
-```python
-# AES-256 encryption for sensitive fields before database storage
-import os
-from cryptography.fernet import Fernet
-from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
-from cryptography.hazmat.primitives import hashes
-import base64
+| What | Algorithm / Standard | Minimum |
+|---|---|---|
+| Data at rest | AES-256 (via Fernet/PBKDF2 or equivalent) | 256-bit key, 480K+ PBKDF2 iterations |
+| Data in transit | TLS 1.2+ | Strong cipher suites only (AES-GCM, ChaCha20) |
+| HSTS | Strict-Transport-Security | max-age=31536000, includeSubDomains, preload |
+| Internal service-to-service | mTLS with certificate verification | TLS 1.2+, verify CA |
+| Key rotation | Decrypt with old key, re-encrypt with new key | Defined rotation schedule |
+| Secrets management | Vault service or environment variables | Never hardcode; never commit .env files |
 
-def derive_key(master_key: bytes, salt: bytes) -> bytes:
-    """Derive encryption key from master key using PBKDF2."""
-    kdf = PBKDF2HMAC(
-        algorithm=hashes.SHA256(),
-        length=32,
-        salt=salt,
-        iterations=480000,
-    )
-    return base64.urlsafe_b64encode(kdf.derive(master_key))
+### Anti-patterns
 
-def encrypt_field(plaintext: str, master_key: bytes) -> str:
-    """Encrypt a sensitive field. Store the result in the database."""
-    salt = os.urandom(16)
-    key = derive_key(master_key, salt)
-    f = Fernet(key)
-    encrypted = f.encrypt(plaintext.encode())
-    # Store salt + encrypted together
-    return base64.urlsafe_b64encode(salt + encrypted).decode()
+- **Never** hardcode secrets: `DATABASE_URL = "postgresql://admin:s3cr3t@..."` is a CC6 violation.
+- **Never** commit `.env`, `*.pem`, `*.key`, or `credentials.*` files. Enforce via `.gitignore`.
+- Always load secrets from vault at runtime, fall back to environment variables.
 
-def decrypt_field(stored_value: str, master_key: bytes) -> str:
-    """Decrypt a sensitive field retrieved from the database."""
-    raw = base64.urlsafe_b64decode(stored_value)
-    salt = raw[:16]
-    encrypted = raw[16:]
-    key = derive_key(master_key, salt)
-    f = Fernet(key)
-    return f.decrypt(encrypted).decode()
-
-# Key rotation: decrypt with old key, encrypt with new key
-def rotate_encryption_key(stored_value, old_key, new_key):
-    plaintext = decrypt_field(stored_value, old_key)
-    return encrypt_field(plaintext, new_key)
-```
-
-### 5.2 Encryption in Transit
-
-```python
-# TLS 1.2+ enforcement — server configuration
-TLS_CONFIG = {
-    "minimum_version": "TLSv1.2",
-    "cipher_suites": [
-        "TLS_AES_256_GCM_SHA384",
-        "TLS_CHACHA20_POLY1305_SHA256",
-        "TLS_AES_128_GCM_SHA256",
-    ],
-    "hsts_max_age": 31536000,          # 1 year
-    "hsts_include_subdomains": True,
-    "hsts_preload": True,
-}
-
-# Internal service-to-service: always use TLS, verify certificates
-import ssl
-
-def create_internal_ssl_context():
-    ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-    ctx.minimum_version = ssl.TLSVersion.TLSv1_2
-    ctx.verify_mode = ssl.CERT_REQUIRED
-    ctx.load_verify_locations("/etc/ssl/internal-ca.pem")
-    return ctx
-```
-
-### 5.3 Secrets Management
-
-```python
-# NEVER do this:
-# DATABASE_URL = "postgresql://admin:s3cr3t@db.example.com/prod"  # CC6 violation
-# API_SECRET = "hardcoded-secret-value"                            # CC6 violation
-
-# DO: Load secrets from environment or vault service
-import os
-
-def get_secret(name: str) -> str:
-    """Retrieve secret from vault service, fall back to environment variable."""
-    # Option 1: Vault service
-    try:
-        return vault_client.read(f"secret/data/{name}")["data"]["value"]
-    except VaultError:
-        pass
-
-    # Option 2: Environment variable
-    value = os.environ.get(name)
-    if not value:
-        raise ConfigurationError(f"Required secret '{name}' not configured")
-    return value
-
-DATABASE_URL = get_secret("DATABASE_URL")
-API_SECRET = get_secret("API_SECRET")
-```
-
-```javascript
-// Node.js — never commit .env files; load from vault at runtime
-function getSecret(name) {
-  // Try vault service first
-  const vaultValue = vaultClient.read(`secret/data/${name}`);
-  if (vaultValue) return vaultValue;
-
-  // Fall back to environment
-  const value = process.env[name];
-  if (!value) {
-    throw new Error(`Required secret '${name}' not configured`);
-  }
-  return value;
-}
-
-// .gitignore MUST include:
-// .env
-// .env.*
-// *.pem
-// *.key
-// credentials.*
-```
+> Implementation code: AES-256 encrypt/decrypt with key rotation, TLS config, vault-based secrets loading (Python, Node.js) — see [resources/access-encryption.md](resources/access-encryption.md)
 
 ## 6. Logging and Monitoring (CC7)
 
-### 6.1 What to Log
-
-Every SOC 2 audit will request evidence from your logs. Ensure the following events are captured:
+### What to Log
 
 | Event Category | Specific Events |
 |---|---|
@@ -388,649 +86,75 @@ Every SOC 2 audit will request evidence from your logs. Ensure the following eve
 | System | Service start/stop, deployment, health check failure, dependency failure |
 | Security | Suspicious activity, rate limit hit, blocked request, invalid token |
 
-### 6.2 Structured Log Format
+### Log Requirements
 
-```python
-import json
-import logging
-from datetime import datetime, timezone
+- **Format**: Structured JSON with timestamp, service, event, actor (user_id, IP, user_agent, session_id), resource (type, id), action, outcome, request_id.
+- **Retention**: Audit logs 365 days minimum, application logs 90 days, security logs 365 days with real-time alerting.
+- **Immutability**: Append-only storage. No edits or deletes. Encrypted at rest (AES-256). Restricted access (admin + auditor only).
 
-class SOC2AuditLogger:
-    """Structured audit logger meeting SOC 2 evidence requirements."""
-
-    def __init__(self, service_name: str):
-        self.service_name = service_name
-        self.logger = logging.getLogger("audit")
-
-    def log(self, event: str, **kwargs):
-        entry = {
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-            "service": self.service_name,
-            "event": event,
-            "level": kwargs.pop("level", "info"),
-            "actor": {
-                "user_id": kwargs.pop("user_id", None),
-                "ip_address": kwargs.pop("ip", None),
-                "user_agent": kwargs.pop("user_agent", None),
-                "session_id": kwargs.pop("session_id", None),
-            },
-            "resource": {
-                "type": kwargs.pop("resource_type", None),
-                "id": kwargs.pop("resource_id", None),
-            },
-            "action": kwargs.pop("action", event),
-            "outcome": kwargs.pop("outcome", "success"),
-            "request_id": kwargs.pop("request_id", None),
-            "details": kwargs,  # Remaining fields
-        }
-        # Remove None values for cleaner logs
-        entry = {k: v for k, v in entry.items() if v is not None}
-        self.logger.info(json.dumps(entry, default=str))
-
-audit = SOC2AuditLogger("my-service")
-
-# Usage examples:
-audit.log("user_login",
-    user_id="usr_123", ip="203.0.113.42", outcome="success",
-    user_agent="Mozilla/5.0", session_id="sess_abc")
-
-audit.log("data_access",
-    user_id="usr_123", ip="203.0.113.42",
-    resource_type="customer_record", resource_id="cust_456",
-    action="read", fields_accessed=["name", "email", "plan"])
-
-audit.log("permission_denied",
-    user_id="usr_789", ip="198.51.100.1",
-    resource_type="admin_panel", action="access",
-    outcome="denied", reason="insufficient_role",
-    level="warning")
-```
-
-```javascript
-// Node.js structured audit logger
-class AuditLogger {
-  constructor(serviceName) {
-    this.serviceName = serviceName;
-  }
-
-  log(event, data = {}) {
-    const entry = {
-      timestamp: new Date().toISOString(),
-      service: this.serviceName,
-      event,
-      level: data.level || "info",
-      actor: {
-        userId: data.userId,
-        ip: data.ip,
-        userAgent: data.userAgent,
-        sessionId: data.sessionId,
-      },
-      resource: {
-        type: data.resourceType,
-        id: data.resourceId,
-      },
-      action: data.action || event,
-      outcome: data.outcome || "success",
-      requestId: data.requestId,
-      details: data.details || {},
-    };
-    // Ship to log aggregation — stdout for container-based collection
-    process.stdout.write(JSON.stringify(entry) + "\n");
-  }
-}
-
-const audit = new AuditLogger("my-service");
-
-audit.log("config_changed", {
-  userId: "usr_admin",
-  ip: "10.0.0.1",
-  resourceType: "system_setting",
-  resourceId: "session_timeout",
-  details: { oldValue: 30, newValue: 15 },
-});
-```
-
-### 6.3 Log Retention and Immutability
-
-```python
-LOG_RETENTION_POLICY = {
-    "audit_logs": {
-        "retention_days": 365,             # CC7: 1-year minimum retention
-        "storage": "append_only",          # CC7: Immutable — no edits or deletes
-        "encryption": "AES-256",           # CC6: Encrypted at rest
-        "access_control": ["admin", "auditor"],  # CC6: Restricted access
-    },
-    "application_logs": {
-        "retention_days": 90,
-        "storage": "append_only",
-    },
-    "security_logs": {
-        "retention_days": 365,
-        "storage": "append_only",
-        "alerting": True,                  # CC7: Real-time alerting on security events
-    },
-}
-```
+> Implementation code: Structured audit logger (Python, Node.js), log retention policy config — see [resources/logging-change-incident.md](resources/logging-change-incident.md)
 
 ## 7. Change Management (CC8)
 
-### 7.1 Branch Protection
+### Branch Protection Rules
 
-```yaml
-# Git branch protection rules — enforce in your repository settings
-# These configurations produce auditable evidence of CC8 compliance
+- At least 1 approving review required; dismiss stale reviews; require code owner reviews.
+- Required status checks: unit tests, integration tests, security lint. Branch must be up to date.
+- Enforce for admins — no bypasses. No direct push. No force pushes. No deletions. Linear history required.
 
-protected_branches:
-  main:
-    required_pull_request_reviews:
-      required_approving_review_count: 1    # At minimum one peer review
-      dismiss_stale_reviews: true           # Re-review after new commits
-      require_code_owner_reviews: true
-    required_status_checks:
-      strict: true                          # Branch must be up to date
-      contexts:
-        - "unit-tests"
-        - "integration-tests"
-        - "security-lint"
-    enforce_admins: true                    # No bypasses, even for admins
-    restrictions:
-      users: []                             # No direct push
-    allow_force_pushes: false
-    allow_deletions: false
-    require_linear_history: true            # No merge commits — clean audit trail
-```
+### Deployment Requirements
 
-### 7.2 Commit and Deployment Tracking
+- Every deployment links to a tracked change request (ticket/PR/CR).
+- Author and approver must be different people (segregation of duties).
+- All tests must pass before deployment. Rollback plan required.
+- Deployment record includes: deployment_id, environment, timestamp, deployer (service account), change_request, PR, commit SHA, approver, author, tests_passed, rollback_plan, changes_summary.
 
-```python
-# Every deployment must link to a tracked change (ticket, PR, or CR)
-DEPLOYMENT_RECORD = {
-    "deployment_id": "deploy_20250115_001",
-    "environment": "production",
-    "deployed_at": "2025-01-15T14:30:00Z",
-    "deployed_by": "deployer_service_account",   # Not a personal account
-    "change_request": "CR-1234",                 # Linked tracking ticket
-    "pull_request": "PR-567",
-    "commit_sha": "abc123def456",
-    "approved_by": "usr_reviewer",               # Different from author (CC8)
-    "author": "usr_developer",                   # Different from approver (CC8)
-    "tests_passed": True,
-    "rollback_plan": "Revert commit abc123 and redeploy previous SHA",
-    "changes_summary": "Updated session timeout from 30 to 15 minutes",
-}
+### Emergency Changes
 
-def validate_deployment(record):
-    """Gate deployment on CC8 requirements."""
-    errors = []
-    if record["author"] == record["approved_by"]:
-        errors.append("CC8: Author cannot approve their own change")
-    if not record["tests_passed"]:
-        errors.append("CC8: All tests must pass before deployment")
-    if not record["change_request"]:
-        errors.append("CC8: Deployment must link to a tracked change request")
-    if not record["rollback_plan"]:
-        errors.append("CC8: Rollback plan required")
-    if errors:
-        raise DeploymentBlockedError(errors)
-```
+- Allowed only for: active security incidents, customer-affecting outages, production data integrity issues.
+- Requires verbal approval from on-call lead (documented within 24 hours), post-deployment review within 48 hours, retroactive change request ticket, and root cause analysis.
 
-### 7.3 Emergency Change Procedure
-
-```python
-EMERGENCY_CHANGE_POLICY = {
-    "requires": [
-        "Verbal approval from on-call lead (documented within 24 hours)",
-        "Post-deployment review within 48 hours",
-        "Retroactive change request ticket created",
-        "Root cause analysis completed",
-    ],
-    "allowed_when": [
-        "Active security incident",
-        "Service outage affecting customers",
-        "Data integrity issue in production",
-    ],
-    "documentation": "Emergency changes must be reviewed and documented "
-                     "retroactively within 48 hours with full audit trail.",
-}
-```
+> Implementation code: Branch protection YAML, deployment validation, emergency change policy — see [resources/logging-change-incident.md](resources/logging-change-incident.md)
 
 ## 8. Incident Response (CC7)
 
-### 8.1 Health Check Endpoints
+### Severity Classification
 
-```python
-from datetime import datetime, timezone
+| Level | Name | Response Time | Description |
+|---|---|---|---|
+| P1 | Critical | 15 minutes | Active breach, data loss, or complete service outage |
+| P2 | High | 1 hour | Security vulnerability exploited, partial outage, data at risk |
+| P3 | Medium | 4 hours | Vulnerability found but not exploited, degraded performance |
+| P4 | Low | 1 business day | Minor issue, policy violation, improvement needed |
 
-def health_check():
-    """
-    Health endpoint for monitoring systems.
-    Returns component-level status for incident detection.
-    """
-    checks = {
-        "database": check_database_connection(),
-        "cache": check_cache_connection(),
-        "storage": check_storage_access(),
-        "external_api": check_external_dependencies(),
-    }
-    all_healthy = all(c["status"] == "healthy" for c in checks.values())
-    return {
-        "status": "healthy" if all_healthy else "degraded",
-        "timestamp": datetime.now(timezone.utc).isoformat(),
-        "version": get_deployed_version(),
-        "checks": checks,
-    }
+### Key Components
 
-def check_database_connection():
-    try:
-        start = datetime.now(timezone.utc)
-        db.execute("SELECT 1")
-        latency_ms = (datetime.now(timezone.utc) - start).total_seconds() * 1000
-        return {"status": "healthy", "latency_ms": round(latency_ms, 2)}
-    except Exception as e:
-        return {"status": "unhealthy", "error": str(e)}
-```
+- **Health checks**: Component-level status endpoints (database, cache, storage, external APIs) with latency measurement.
+- **Anomaly detection**: Thresholds for failed logins (10/user/hour, 50/IP/hour), API errors (100/min), data exports (500MB), admin actions (50/hour), after-hours admin logins (1).
+- **Containment automation**: On suspected compromise, immediately disable account, terminate sessions, revoke all credentials, block suspicious IPs, preserve evidence.
+- **Post-incident review**: Timeline (detected, acknowledged, contained, resolved, post-mortem), impact assessment (customers affected, data exposed, downtime), root cause, remediation (immediate + long-term), lessons learned, action items with owners.
 
-### 8.2 Anomaly Detection Patterns
-
-```python
-ALERT_THRESHOLDS = {
-    "failed_logins_per_user_per_hour": 10,       # Brute force detection
-    "failed_logins_per_ip_per_hour": 50,          # Credential stuffing
-    "api_errors_per_minute": 100,                 # System instability
-    "data_export_size_mb": 500,                   # Data exfiltration
-    "admin_actions_per_hour": 50,                 # Compromised admin account
-    "new_api_keys_per_day": 10,                   # Unauthorized automation
-    "after_hours_admin_logins": 1,                # Suspicious timing
-}
-
-def check_anomaly(metric_name, current_value, context):
-    threshold = ALERT_THRESHOLDS.get(metric_name)
-    if threshold and current_value > threshold:
-        alert = {
-            "type": "anomaly_detected",
-            "metric": metric_name,
-            "value": current_value,
-            "threshold": threshold,
-            "context": context,
-            "timestamp": utcnow().isoformat(),
-            "severity": classify_severity(metric_name, current_value, threshold),
-        }
-        send_alert(alert)
-        audit_log("security_anomaly", **alert)
-```
-
-### 8.3 Severity Classification
-
-```python
-SEVERITY_LEVELS = {
-    "P1": {
-        "name": "Critical",
-        "description": "Active breach, data loss, or complete service outage",
-        "response_time": "15 minutes",
-        "examples": ["Confirmed data breach", "All customers affected",
-                      "Credentials exposed publicly"],
-        "actions": ["Page on-call team", "Notify leadership", "Begin containment"],
-    },
-    "P2": {
-        "name": "High",
-        "description": "Security vulnerability exploited, partial outage, data at risk",
-        "response_time": "1 hour",
-        "examples": ["Active exploitation attempt", "Single-tenant data exposure",
-                      "Authentication bypass discovered"],
-        "actions": ["Alert security team", "Begin investigation"],
-    },
-    "P3": {
-        "name": "Medium",
-        "description": "Vulnerability found but not exploited, degraded performance",
-        "response_time": "4 hours",
-        "examples": ["Unpatched vulnerability", "Elevated error rates",
-                      "Suspicious but unconfirmed activity"],
-    },
-    "P4": {
-        "name": "Low",
-        "description": "Minor issue, policy violation, improvement needed",
-        "response_time": "1 business day",
-        "examples": ["Failed access review followup", "Minor config drift",
-                      "Documentation gap"],
-    },
-}
-```
-
-### 8.4 Containment Automation
-
-```python
-def contain_compromised_account(user_id, incident_id, actor_id):
-    """Automated containment for suspected account compromise."""
-    actions_taken = []
-
-    # 1. Disable the account
-    disable_account(user_id)
-    actions_taken.append("account_disabled")
-
-    # 2. Terminate all active sessions
-    count = terminate_all_sessions(user_id)
-    actions_taken.append(f"sessions_terminated:{count}")
-
-    # 3. Revoke all API keys and tokens
-    revoke_all_api_keys(user_id)
-    revoke_all_oauth_tokens(user_id)
-    actions_taken.append("credentials_revoked")
-
-    # 4. Block source IPs associated with suspicious activity
-    suspicious_ips = get_recent_ips(user_id, hours=24)
-    for ip in suspicious_ips:
-        add_to_blocklist(ip, reason=f"incident:{incident_id}", duration_hours=24)
-    actions_taken.append(f"ips_blocked:{len(suspicious_ips)}")
-
-    # 5. Preserve evidence
-    snapshot_user_activity(user_id, incident_id)
-    actions_taken.append("evidence_preserved")
-
-    audit_log("incident_containment",
-        incident_id=incident_id,
-        target_user=user_id,
-        actor=actor_id,
-        actions=actions_taken)
-
-    return actions_taken
-```
-
-### 8.5 Post-Incident Review Template
-
-```python
-POST_INCIDENT_TEMPLATE = {
-    "incident_id": "",
-    "severity": "",                     # P1-P4
-    "title": "",
-    "timeline": {
-        "detected_at": "",
-        "acknowledged_at": "",
-        "contained_at": "",
-        "resolved_at": "",
-        "post_mortem_completed_at": "",
-    },
-    "impact": {
-        "customers_affected": 0,
-        "data_exposed": False,
-        "data_types_exposed": [],
-        "service_downtime_minutes": 0,
-    },
-    "root_cause": "",
-    "contributing_factors": [],
-    "remediation": {
-        "immediate_actions": [],          # What was done to stop the bleeding
-        "long_term_fixes": [],            # Systemic improvements
-        "prevention_measures": [],        # How to prevent recurrence
-    },
-    "lessons_learned": [],
-    "action_items": [
-        # {"owner": "", "task": "", "due_date": "", "status": ""}
-    ],
-}
-```
+> Implementation code: Health check endpoints, anomaly detection, severity definitions, containment automation, post-incident template — see [resources/logging-change-incident.md](resources/logging-change-incident.md)
 
 ## 9. Availability Controls
 
-### 9.1 Circuit Breaker Pattern
+### Key Patterns
 
-```python
-import time
-from enum import Enum
+- **Circuit breaker**: Track failures per dependency. After threshold (e.g., 5 failures), open circuit and reject requests immediately. After recovery timeout, allow test requests. Close circuit after success threshold met.
+- **Retry with exponential backoff**: Max 3 retries, base delay 1s, max delay 30s, jitter to prevent thundering herd. Only retry on transient errors (502, 503, 504, ECONNRESET, ETIMEDOUT).
+- **Backup verification**: Monthly restoration tests to isolated environment. Verify checksum, restore, validate data integrity (record counts + sample records). Log results as SOC 2 evidence.
 
-class CircuitState(Enum):
-    CLOSED = "closed"           # Normal operation
-    OPEN = "open"               # Failing — reject requests immediately
-    HALF_OPEN = "half_open"     # Testing if service recovered
-
-class CircuitBreaker:
-    def __init__(self, failure_threshold=5, recovery_timeout=30,
-                 success_threshold=3):
-        self.failure_threshold = failure_threshold
-        self.recovery_timeout = recovery_timeout
-        self.success_threshold = success_threshold
-        self.state = CircuitState.CLOSED
-        self.failure_count = 0
-        self.success_count = 0
-        self.last_failure_time = None
-
-    def call(self, func, *args, **kwargs):
-        if self.state == CircuitState.OPEN:
-            if time.time() - self.last_failure_time > self.recovery_timeout:
-                self.state = CircuitState.HALF_OPEN
-                self.success_count = 0
-            else:
-                audit_log("circuit_breaker_rejected",
-                          service=func.__name__, state="open")
-                raise ServiceUnavailableError("Circuit breaker is open")
-
-        try:
-            result = func(*args, **kwargs)
-            if self.state == CircuitState.HALF_OPEN:
-                self.success_count += 1
-                if self.success_count >= self.success_threshold:
-                    self.state = CircuitState.CLOSED
-                    self.failure_count = 0
-                    audit_log("circuit_breaker_closed", service=func.__name__)
-            return result
-        except Exception as e:
-            self.failure_count += 1
-            self.last_failure_time = time.time()
-            if self.failure_count >= self.failure_threshold:
-                self.state = CircuitState.OPEN
-                audit_log("circuit_breaker_opened",
-                          service=func.__name__, failures=self.failure_count)
-            raise
-```
-
-### 9.2 Retry with Exponential Backoff
-
-```javascript
-async function retryWithBackoff(fn, options = {}) {
-  const {
-    maxRetries = 3,
-    baseDelayMs = 1000,
-    maxDelayMs = 30000,
-    retryableErrors = [502, 503, 504, "ECONNRESET", "ETIMEDOUT"],
-  } = options;
-
-  for (let attempt = 0; attempt <= maxRetries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      const isRetryable = retryableErrors.some(
-        (e) => error.status === e || error.code === e
-      );
-      if (!isRetryable || attempt === maxRetries) {
-        throw error;
-      }
-      const delay = Math.min(
-        baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000,
-        maxDelayMs
-      );
-      await new Promise((resolve) => setTimeout(resolve, delay));
-    }
-  }
-}
-```
-
-### 9.3 Backup Verification
-
-```python
-def verify_backup(backup_id):
-    """
-    CC7: Regularly test backup restoration.
-    Run monthly; log results as SOC 2 evidence.
-    """
-    result = {
-        "backup_id": backup_id,
-        "test_date": utcnow().isoformat(),
-        "steps": [],
-    }
-
-    # 1. Verify backup exists and is not corrupted
-    backup = get_backup(backup_id)
-    checksum_valid = verify_checksum(backup)
-    result["steps"].append({
-        "step": "checksum_verification",
-        "passed": checksum_valid,
-    })
-
-    # 2. Restore to isolated test environment
-    test_env = create_isolated_restore_environment()
-    restore_success = restore_backup(backup, test_env)
-    result["steps"].append({
-        "step": "restore_to_test",
-        "passed": restore_success,
-    })
-
-    # 3. Verify data integrity after restore
-    record_count_match = verify_record_counts(test_env)
-    sample_data_valid = verify_sample_records(test_env)
-    result["steps"].append({
-        "step": "data_integrity",
-        "passed": record_count_match and sample_data_valid,
-    })
-
-    # 4. Clean up
-    destroy_environment(test_env)
-
-    result["overall_passed"] = all(s["passed"] for s in result["steps"])
-    audit_log("backup_verification", **result)
-    return result
-```
+> Implementation code: Circuit breaker (Python), retry with backoff (Node.js), backup verification — see [resources/availability-integrity.md](resources/availability-integrity.md)
 
 ## 10. Processing Integrity Controls
 
-### 10.1 Input Validation
+### Key Patterns
 
-```python
-from pydantic import BaseModel, validator, constr
-from typing import Optional
+- **Input validation**: Validate at every API boundary. Use schema validation (Pydantic, Joi, etc.). Reject invalid data early. Log validation failures with endpoint and error details.
+- **Idempotency**: State-changing operations must accept an idempotency key. Check for existing result before processing. Store results with 24-hour TTL. Log both new processing and replays.
+- **Data reconciliation**: Periodic cross-system checks (e.g., usage records vs invoices). Flag discrepancies exceeding threshold (e.g., $0.01). Alert on mismatches. Log reconciliation results as evidence.
 
-class CreateCustomerRequest(BaseModel):
-    """Validate all inputs at API boundary. Reject invalid data early."""
-    name: constr(min_length=1, max_length=255, strip_whitespace=True)
-    email: constr(regex=r"^[^@\s]+@[^@\s]+\.[^@\s]+$", max_length=254)
-    plan: str
-    metadata: Optional[dict] = None
-
-    @validator("plan")
-    def validate_plan(cls, v):
-        allowed = ["free", "starter", "professional", "enterprise"]
-        if v not in allowed:
-            raise ValueError(f"Plan must be one of: {allowed}")
-        return v
-
-    @validator("metadata")
-    def validate_metadata(cls, v):
-        if v and len(str(v)) > 10000:
-            raise ValueError("Metadata too large")
-        return v
-```
-
-```javascript
-// Node.js — validate at every API boundary
-function validateCreateCustomer(body) {
-  const errors = [];
-
-  if (!body.name || typeof body.name !== "string") {
-    errors.push("name is required and must be a string");
-  } else if (body.name.length > 255) {
-    errors.push("name must be 255 characters or fewer");
-  }
-
-  if (!body.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(body.email)) {
-    errors.push("valid email is required");
-  }
-
-  const allowedPlans = ["free", "starter", "professional", "enterprise"];
-  if (!allowedPlans.includes(body.plan)) {
-    errors.push(`plan must be one of: ${allowedPlans.join(", ")}`);
-  }
-
-  if (errors.length > 0) {
-    auditLog("validation_failed", {
-      endpoint: "/customers",
-      errors,
-      ip: req.ip,
-    });
-    throw new ValidationError(errors);
-  }
-}
-```
-
-### 10.2 Idempotency
-
-```python
-def process_payment(idempotency_key, payment_data):
-    """
-    Idempotency ensures processing integrity — the same request
-    produces the same result regardless of how many times it is sent.
-    """
-    # Check for existing result with this key
-    existing = db.query(
-        "SELECT result FROM idempotency_keys WHERE key = %s AND expires_at > NOW()",
-        [idempotency_key]
-    )
-    if existing:
-        audit_log("idempotent_replay", key=idempotency_key)
-        return existing.result
-
-    # Process the payment
-    result = execute_payment(payment_data)
-
-    # Store result for future duplicate requests
-    db.execute(
-        """INSERT INTO idempotency_keys (key, result, created_at, expires_at)
-           VALUES (%s, %s, NOW(), NOW() + INTERVAL '24 hours')""",
-        [idempotency_key, serialize(result)]
-    )
-
-    audit_log("payment_processed", key=idempotency_key,
-              amount=payment_data["amount"], outcome="success")
-    return result
-```
-
-### 10.3 Data Reconciliation
-
-```python
-def reconcile_billing(period_start, period_end):
-    """
-    Processing integrity check: reconcile usage records
-    against invoices to detect discrepancies.
-    """
-    usage_records = get_usage_records(period_start, period_end)
-    invoices = get_invoices(period_start, period_end)
-
-    discrepancies = []
-    for customer_id in set(r.customer_id for r in usage_records):
-        usage_total = sum(r.amount for r in usage_records
-                         if r.customer_id == customer_id)
-        invoice_total = sum(i.amount for i in invoices
-                           if i.customer_id == customer_id)
-
-        if abs(usage_total - invoice_total) > 0.01:
-            discrepancies.append({
-                "customer_id": customer_id,
-                "usage_total": usage_total,
-                "invoice_total": invoice_total,
-                "difference": usage_total - invoice_total,
-            })
-
-    result = {
-        "period": f"{period_start} to {period_end}",
-        "records_checked": len(usage_records),
-        "invoices_checked": len(invoices),
-        "discrepancies_found": len(discrepancies),
-        "discrepancies": discrepancies,
-        "status": "pass" if not discrepancies else "fail",
-    }
-
-    audit_log("billing_reconciliation", **result)
-    if discrepancies:
-        send_alert("billing_discrepancy", result)
-    return result
-```
+> Implementation code: Input validation (Python Pydantic, Node.js), idempotency pattern, billing reconciliation — see [resources/availability-integrity.md](resources/availability-integrity.md)
 
 ## 11. Data Handling
 
@@ -1045,164 +169,42 @@ def reconcile_billing(period_start, period_end):
 
 ### 11.2 Retention and Deletion
 
-```python
-DATA_RETENTION_POLICIES = {
-    "customer_data": {
-        "active": "retained while account is active",
-        "after_deletion": "30 days grace period, then permanent deletion",
-        "deletion_method": "hard_delete_with_verification",
-    },
-    "audit_logs": {
-        "minimum_retention": "365 days",
-        "deletion_method": "automated_after_retention",
-    },
-    "session_data": {
-        "retention": "24 hours after expiry",
-        "deletion_method": "automated_cleanup",
-    },
-    "backups": {
-        "retention": "90 days",
-        "deletion_method": "automated_with_verification",
-    },
-}
+| Data Type | Retention | Deletion Method |
+|---|---|---|
+| Customer data | While account active + 30 days grace | Hard delete with verification |
+| Audit logs | 365 days minimum | Automated after retention |
+| Session data | 24 hours after expiry | Automated cleanup |
+| Backups | 90 days | Automated with verification |
 
-def secure_delete_customer_data(customer_id, request_id):
-    """
-    Delete all customer data with verification and audit trail.
-    Required for Confidentiality TSC.
-    """
-    tables = [
-        "customer_records", "customer_files", "customer_metadata",
-        "customer_api_keys", "customer_sessions",
-    ]
-    deleted_counts = {}
-
-    for table in tables:
-        count = db.execute(
-            f"DELETE FROM {table} WHERE customer_id = %s", [customer_id]
-        )
-        deleted_counts[table] = count
-
-    # Verify deletion
-    for table in tables:
-        remaining = db.query(
-            f"SELECT COUNT(*) FROM {table} WHERE customer_id = %s", [customer_id]
-        )
-        if remaining > 0:
-            raise DeletionVerificationError(
-                f"Data remains in {table} after deletion")
-
-    audit_log("customer_data_deleted",
-        customer_id=customer_id,
-        request_id=request_id,
-        tables_cleaned=deleted_counts,
-        verified=True)
-```
-
-### 11.3 Test Data Policy
-
-```python
-# NEVER use production customer data in non-production environments
-
-def generate_synthetic_customer():
-    """Generate realistic but fake customer data for testing."""
-    return {
-        "name": fake.name(),
-        "email": f"test_{uuid4().hex[:8]}@example.com",
-        "company": fake.company(),
-        "phone": fake.phone_number(),
-        "address": fake.address(),
-        "plan": random.choice(["free", "starter", "professional"]),
-    }
-
-def mask_for_staging(record):
-    """Mask production data if it must be used in staging (avoid if possible)."""
-    return {
-        **record,
-        "name": f"User {hash(record['name']) % 10000}",
-        "email": f"masked_{hash(record['email']) % 10000}@example.com",
-        "phone": "555-0000",
-        "address": "123 Test Street, Testville, TS 00000",
-        # Preserve: id, plan, created_at (non-PII structural data)
-    }
-```
+- On customer deletion: remove from all tables (records, files, metadata, API keys, sessions), verify zero remaining rows, log with full audit trail.
+- **Test data**: Never use production customer data in non-production environments. Generate synthetic data or properly anonymize (mask names, emails, phones, addresses; preserve structural non-PII fields).
 
 ## 12. Vendor Management (CC9)
 
-### 12.1 Vendor Inventory
+### Vendor Registry Requirements
 
-```python
-VENDOR_REGISTRY = {
-    "vendor_id": "v_001",
-    "name": "Cloud Provider",
-    "service": "Infrastructure hosting",
-    "data_access": "customer_data",        # What customer data they access
-    "data_classification": "confidential",
-    "soc2_report": {
-        "has_report": True,
-        "type": "Type II",
-        "report_date": "2025-03-15",
-        "next_review_date": "2026-03-15",  # Annual review required
-        "findings": 0,
-    },
-    "contract": {
-        "data_protection_clause": True,
-        "audit_rights": True,
-        "breach_notification_hours": 72,
-        "data_deletion_on_termination": True,
-        "subprocessor_notification": True,
-    },
-    "risk_rating": "low",                  # low, medium, high, critical
-    "last_review_date": "2025-01-15",
-    "next_review_date": "2026-01-15",
-    "owner": "security-team",
-}
-```
+Every third-party vendor accessing customer data must have a registry entry tracking:
+- Vendor name, service provided, data access level, data classification
+- SOC 2 report status (type, date, findings, next review)
+- Contract clauses: data protection, audit rights, breach notification SLA, deletion on termination, subprocessor notification
+- Risk rating (low/medium/high/critical), review dates, owner
 
-### 12.2 Vendor Security Requirements
+### Security Requirements Checklist
 
-```python
-VENDOR_REQUIREMENTS_CHECKLIST = [
-    "SOC 2 Type II report available and reviewed",
-    "Data encryption at rest (AES-256 or equivalent)",
-    "Data encryption in transit (TLS 1.2+)",
-    "Access controls with least privilege",
-    "Incident response plan with notification SLA",
-    "Business continuity and disaster recovery plan",
-    "Background checks for employees accessing data",
-    "Data deletion capability upon contract termination",
-    "Subprocessor disclosure and notification",
-    "Right to audit clause in contract",
-    "Data residency and jurisdiction compliance",
-    "Vulnerability management program",
-]
+- SOC 2 Type II report available and reviewed
+- Data encryption at rest (AES-256 or equivalent)
+- Data encryption in transit (TLS 1.2+)
+- Access controls with least privilege
+- Incident response plan with notification SLA
+- Business continuity and disaster recovery plan
+- Background checks for employees accessing data
+- Data deletion capability upon contract termination
+- Subprocessor disclosure and notification
+- Right to audit clause in contract
+- Data residency and jurisdiction compliance
+- Vulnerability management program
 
-def assess_vendor(vendor_id):
-    """Annual vendor security assessment."""
-    vendor = get_vendor(vendor_id)
-    results = []
-
-    for requirement in VENDOR_REQUIREMENTS_CHECKLIST:
-        results.append({
-            "requirement": requirement,
-            "met": None,         # To be filled during review
-            "evidence": None,
-            "notes": None,
-        })
-
-    assessment = {
-        "vendor_id": vendor_id,
-        "assessment_date": utcnow().isoformat(),
-        "assessor": get_current_user(),
-        "requirements": results,
-        "overall_risk": None,    # Determined after review
-        "next_review": None,
-    }
-
-    audit_log("vendor_assessment_initiated",
-        vendor_id=vendor_id, vendor_name=vendor["name"])
-    return assessment
-```
+Annual vendor security assessments are required. Log assessment initiation and results.
 
 ## 13. Type I vs Type II — Developer Impact
 
@@ -1223,124 +225,18 @@ Type II answers: "Do your controls actually work, consistently, over time?"
 
 Auditors typically request 200-300 evidence items. Automate collection wherever possible.
 
-### 14.1 Evidence Categories and Sources
+### Evidence Categories
 
-```python
-EVIDENCE_MAP = {
-    "access_controls": {
-        "sources": [
-            "User list with roles and last login dates (quarterly export)",
-            "Access review records (quarterly)",
-            "Deprovisioned user list with dates",
-            "MFA enrollment report",
-            "API key inventory with expiration dates",
-            "Service account inventory",
-        ],
-        "automated": True,
-        "query": "SELECT id, email, role, mfa_enabled, last_login_at, "
-                 "created_at FROM users WHERE is_active = TRUE",
-    },
-    "change_management": {
-        "sources": [
-            "Branch protection configuration export",
-            "Pull request history with reviewers",
-            "Deployment log with approvals",
-            "Emergency change records",
-            "Rollback history",
-        ],
-        "automated": True,
-        "source_system": "git_and_deployment_pipeline",
-    },
-    "incident_response": {
-        "sources": [
-            "Incident tickets with timelines",
-            "Post-incident reviews",
-            "Annual IR test results",
-            "Alert configurations",
-            "On-call rotation schedule",
-        ],
-        "automated": "partial",
-    },
-    "monitoring": {
-        "sources": [
-            "Uptime reports",
-            "Alert configuration exports",
-            "Dashboard screenshots",
-            "Log retention configuration",
-            "Anomaly detection rules",
-        ],
-        "automated": True,
-    },
-    "encryption": {
-        "sources": [
-            "TLS configuration and certificate inventory",
-            "Encryption-at-rest configuration",
-            "Key rotation records",
-            "Key management policy",
-        ],
-        "automated": "partial",
-    },
-    "vendor_management": {
-        "sources": [
-            "Vendor inventory with risk ratings",
-            "Vendor SOC 2 reports on file",
-            "Annual vendor review records",
-            "Contract review records",
-        ],
-        "automated": False,
-    },
-}
-```
+| Category | Key Sources | Automatable? |
+|---|---|---|
+| Access controls | User/role exports, access review records, deprovisioned user list, MFA report, API key inventory | Yes |
+| Change management | Branch protection config, PR history with reviewers, deployment log, emergency changes, rollbacks | Yes |
+| Incident response | Incident tickets with timelines, post-incident reviews, annual IR test, alert configs, on-call schedule | Partial |
+| Monitoring | Uptime reports, alert config exports, dashboard screenshots, log retention config, anomaly rules | Yes |
+| Encryption | TLS config, certificate inventory, encryption-at-rest config, key rotation records | Partial |
+| Vendor management | Vendor inventory, SOC 2 reports on file, annual review records, contract reviews | No |
 
-### 14.2 Automated Evidence Export
-
-```python
-def generate_quarterly_evidence():
-    """
-    Automated quarterly evidence package for SOC 2 audit.
-    Run via scheduled job; store output in evidence repository.
-    """
-    quarter = get_current_quarter()
-    evidence = {}
-
-    # Access control evidence
-    evidence["active_users"] = db.query(
-        "SELECT id, email, role, mfa_enabled, last_login_at, created_at "
-        "FROM users WHERE is_active = TRUE ORDER BY role, email")
-
-    evidence["access_reviews"] = db.query(
-        "SELECT * FROM access_review_records "
-        "WHERE review_date >= %s ORDER BY review_date DESC",
-        [quarter.start])
-
-    evidence["deprovisioned_users"] = db.query(
-        "SELECT id, email, deactivated_at, deactivated_by, reason "
-        "FROM users WHERE is_active = FALSE AND deactivated_at >= %s",
-        [quarter.start])
-
-    # Change management evidence
-    evidence["deployments"] = db.query(
-        "SELECT * FROM deployment_log "
-        "WHERE deployed_at >= %s ORDER BY deployed_at DESC",
-        [quarter.start])
-
-    evidence["emergency_changes"] = db.query(
-        "SELECT * FROM change_requests "
-        "WHERE type = 'emergency' AND created_at >= %s",
-        [quarter.start])
-
-    # Incident evidence
-    evidence["incidents"] = db.query(
-        "SELECT * FROM incidents WHERE detected_at >= %s",
-        [quarter.start])
-
-    # Store with timestamp for audit trail
-    store_evidence(quarter=quarter.label, data=evidence,
-                   generated_at=utcnow().isoformat())
-
-    audit_log("evidence_generated", quarter=quarter.label,
-              categories=list(evidence.keys()))
-```
+> Implementation code: Evidence category map, automated quarterly export function — see [resources/evidence-collection.md](resources/evidence-collection.md)
 
 ## 15. Common Mistakes
 
@@ -1406,3 +302,12 @@ def generate_quarterly_evidence():
 - Deploy emergency changes without retroactive documentation
 - Assume encryption is handled by the infrastructure — verify it
 - Log raw credentials, tokens, or full credit card numbers
+
+## Resources
+
+Detailed implementation code for each control area:
+
+- **[resources/access-encryption.md](resources/access-encryption.md)** — RBAC middleware, session management, API key lifecycle, access review queries, user deprovisioning, AES-256 encryption, TLS configuration, secrets management
+- **[resources/logging-change-incident.md](resources/logging-change-incident.md)** — Structured audit logger, log retention config, branch protection YAML, deployment tracking, emergency change policy, health checks, anomaly detection, severity classification, containment automation, post-incident review template
+- **[resources/availability-integrity.md](resources/availability-integrity.md)** — Circuit breaker pattern, retry with exponential backoff, backup verification, input validation, idempotency, data reconciliation
+- **[resources/evidence-collection.md](resources/evidence-collection.md)** — Evidence category map, automated quarterly evidence export
