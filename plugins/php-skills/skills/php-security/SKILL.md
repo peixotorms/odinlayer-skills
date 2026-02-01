@@ -475,6 +475,16 @@ Use `disable_functions` in php.ini to disable functions your application does no
 | Command injection | `escapeshellarg()` + avoid shell functions when possible |
 | Information disclosure | Disable `display_errors`, `expose_php`, `phpinfo()` |
 
+## Automated Taint Analysis
+
+Psalm can trace user input from source (e.g., `$_GET`) to dangerous sinks (e.g., SQL query, `echo`) and flag injection paths automatically:
+
+```bash
+vendor/bin/psalm --taint-analysis
+```
+
+Catches SQL injection, XSS, and other data-flow vulnerabilities that manual review misses. Use alongside manual code review, not as replacement.
+
 ## Security Checklist
 
 - [ ] `declare(strict_types=1)` in every file
@@ -499,3 +509,4 @@ Use `disable_functions` in php.ini to disable functions your application does no
 - [ ] Regex patterns tested for catastrophic backtracking (ReDoS)
 - [ ] cURL: `CURLOPT_SSL_VERIFYPEER` enabled in production
 - [ ] `filter_var()` / `filter_input()` for input validation
+- [ ] Psalm taint analysis in CI (`--taint-analysis`)

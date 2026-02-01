@@ -698,6 +698,26 @@ class UserTest extends TestCase {
 | Test naming | `*Test.php`, method `test*` |
 | `t.Helper()` equivalent | N/A — PHP traces show full stack |
 
+### Static Analysis
+
+| Tool | Usage |
+|------|-------|
+| PHPStan | `composer require --dev phpstan/phpstan` — levels 0–9 strictness, start low and increase |
+| Psalm | `composer require --dev vimeo/psalm` — similar to PHPStan, adds taint analysis for security |
+
+```bash
+# Run in CI and locally before commits
+vendor/bin/phpstan analyse src/ --level=6
+vendor/bin/psalm --show-info=false
+```
+
+| Rule | Detail |
+|------|--------|
+| Baseline file for legacy code | `phpstan.neon` with `ignoreErrors`, reduce over time |
+| Level progression | Start level 0, increase one level per sprint/cycle |
+| CI gate | Fail build on any new error — never ignore regressions |
+| Psalm taint analysis | Detects SQL injection, XSS flows automatically — see `php-security` |
+
 ---
 
 ## PHP Version Migration Reference
