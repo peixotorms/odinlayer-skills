@@ -1,6 +1,6 @@
 ---
 name: rust-unsafe
-description: Use when writing unsafe code, FFI bindings, raw pointers, or C interop in Rust. Covers safety invariants, SAFETY comments, Miri testing, common pitfalls, FFI wrapper patterns, CString handling, opaque types, and safe abstraction design.
+description: Use when writing unsafe code, FFI bindings, raw pointers, or C interop in Rust. Covers bindgen, cbindgen, extern "C", #[repr(C)], transmute, UnsafeCell, NonNull, Pin, PhantomData, soundness, undefined behavior, aliasing rules, safety invariants, SAFETY comments, Miri testing, common pitfalls, FFI wrapper patterns, CString handling, opaque types, and safe abstraction design.
 ---
 
 # Unsafe & FFI

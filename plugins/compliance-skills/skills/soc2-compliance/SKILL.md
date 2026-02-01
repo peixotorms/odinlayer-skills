@@ -1,6 +1,6 @@
 ---
 name: soc2-compliance
-description: Use when building SaaS platforms, cloud services, customer-facing APIs, multi-tenant systems, or any service handling customer data that requires SOC 2 certification — Trust Services Criteria, Common Criteria CC1-CC9, access controls, change management, incident response, evidence collection, vendor management
+description: Use when building SaaS platforms, cloud services, customer-facing APIs, multi-tenant systems, or any service handling customer data that requires SOC 2 certification — Trust Services Criteria, TSC, CC1 through CC9, Type I, Type II, AICPA, security, availability, processing integrity, confidentiality, privacy, evidence collection, vendor management, penetration testing, risk assessment, access review, change management, incident response
 ---
 
 # SOC 2 Compliance Coding Guidelines

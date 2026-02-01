@@ -1,6 +1,6 @@
 ---
 name: go-concurrency
-description: Use when writing concurrent Go code with goroutines, channels, select, sync primitives, or WaitGroup. Covers share-by-communicating, channel patterns, buffered vs unbuffered channels, select with default, parallelization, worker pools, resource pools, mutexes, and common concurrency mistakes.
+description: Use when writing concurrent Go code with goroutines, channels, select, sync primitives, or WaitGroup. Covers context.Context, cancellation, deadline, timeout, errgroup, semaphore, atomic, sync.Map, sync.Once, sync.Mutex, sync.RWMutex, sync.Pool, race condition, data race, -race flag, fan-out, fan-in, pipeline, share-by-communicating, channel patterns, buffered vs unbuffered channels, select with default, parallelization, worker pools, resource pools, done channel, and common concurrency mistakes.
 ---
 
 # Go Concurrency

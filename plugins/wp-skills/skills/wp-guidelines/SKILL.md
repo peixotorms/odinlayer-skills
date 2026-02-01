@@ -1,6 +1,6 @@
 ---
 name: wp-guidelines
-description: Use when writing, reviewing, or refactoring WordPress PHP code — naming conventions, hooks, i18n, enqueuing, Yoda conditions, WordPress API usage, formatting, deprecated functions. For security see wp-security; for performance see wp-performance; for blocks see wp-blocks.
+description: Use when writing, reviewing, or refactoring WordPress PHP code. Covers WordPress Coding Standards (WPCS), naming conventions, Yoda conditions, $wpdb usage, escaping with esc_html/esc_attr/esc_url, wp_kses, hooks (add_action, add_filter, apply_filters, do_action), i18n functions (__(), _e(), _x, _n), wp_enqueue_script, wp_enqueue_style, formatting rules, deprecated function replacements, and WordPress API best practices. For security see wp-security; for performance see wp-performance; for blocks see wp-blocks.
 ---
 
 # WordPress Coding Standards & Conventions

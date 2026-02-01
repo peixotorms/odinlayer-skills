@@ -1,6 +1,6 @@
 ---
 name: rust-iot
-description: Use when building IoT applications, sensor networks, or edge devices in Rust. Covers MQTT with rumqttc, offline-first store-and-forward, exponential backoff retry, power management, TLS security, and telemetry publishing.
+description: Use when building IoT applications, sensor networks, or edge devices in Rust. Covers telemetry, protocol buffers, protobuf, CoAP, BLE, Bluetooth, serial communication, GPIO, edge computing, OTA update, firmware, data pipeline, MQTT with rumqttc, offline-first store-and-forward, exponential backoff retry, power management, TLS security, and telemetry publishing.
 ---
 
 # IoT Development

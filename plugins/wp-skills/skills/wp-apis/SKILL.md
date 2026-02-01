@@ -1,6 +1,6 @@
 ---
 name: wp-apis
-description: Use when working with WordPress core APIs in plugins or themes — admin menus, shortcodes, meta boxes, custom post types, taxonomies, HTTP API, WP-Cron, dashboard widgets, users and roles, privacy tools, theme mods, site health, global variables, responsive images, and advanced hooks.
+description: Use when working with WordPress core APIs in plugins or themes. Covers add_menu_page, add_submenu_page, add_options_page, add_shortcode, add_meta_box, register_post_type, register_taxonomy, HTTP API (wp_remote_request, wp_remote_get, wp_remote_post), wp_schedule_event (WP-Cron), wp_add_dashboard_widget, users and roles (add_role, current_user_can), privacy tools (wp_register_personal_data_exporter), theme mods, site health API, global variables ($wpdb, $post, $wp_query), add_image_size, responsive images, and advanced hooks (do_action, apply_filters, remove_action).
 ---
 
 # WordPress Core APIs

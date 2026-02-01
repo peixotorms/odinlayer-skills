@@ -1,6 +1,6 @@
 ---
 name: wp-performance
-description: Use when optimizing WordPress performance, debugging slow queries, configuring caching, reviewing database code, or preparing for high traffic — WP_Query optimization, object cache, transients, anti-patterns, profiling, platform-specific guidance.
+description: Use when optimizing WordPress performance, debugging slow queries, configuring caching, reviewing database code, or preparing for high traffic. Covers WP_Query optimization (get_posts, meta_query, tax_query, no_found_rows, update_post_meta_cache, fields), object cache (wp_cache_get, wp_cache_set, Redis, Memcached), transients (set_transient, get_transient), autoload options, Query Monitor, Debug Bar, slow query profiling, anti-patterns (posts_per_page -1, query_posts, N+1), WP-CLI profiling, asset loading strategies, and platform-specific guidance.
 ---
 
 # WordPress Performance Optimization

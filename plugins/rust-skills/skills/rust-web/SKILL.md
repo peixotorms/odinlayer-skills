@@ -1,6 +1,6 @@
 ---
 name: rust-web
-description: Use when building web services, REST APIs, or HTTP servers in Rust with axum, actix-web, warp, or rocket. Covers handler patterns, extractors, state management, middleware, IntoResponse error handling, and framework comparison.
+description: Use when building web services, REST APIs, or HTTP servers in Rust with axum, actix-web, warp, or rocket. Covers tower middleware, hyper, reqwest HTTP client, router design, JSON handling, REST and OpenAPI, CORS configuration, WebSocket, SSE (server-sent events), graceful shutdown, state sharing, handler patterns, extractors, IntoResponse error handling, and framework comparison.
 ---
 
 # Web Development

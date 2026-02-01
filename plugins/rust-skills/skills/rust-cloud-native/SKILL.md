@@ -1,6 +1,6 @@
 ---
 name: rust-cloud-native
-description: Use when building cloud-native apps, microservices, or Kubernetes-deployed Rust services. Covers graceful shutdown, health checks, 12-factor config, OpenTelemetry tracing, gRPC with tonic, and container optimization.
+description: Use when building cloud-native apps, microservices, or Kubernetes-deployed Rust services. Covers Docker, container builds, Dockerfile, multi-stage build, health endpoint, readiness and liveness probes, prometheus metrics, distributed tracing with OpenTelemetry and jaeger, graceful shutdown, 12-factor config, gRPC with tonic, and container optimization.
 ---
 
 # Cloud-Native Development

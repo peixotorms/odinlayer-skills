@@ -1,6 +1,6 @@
 ---
 name: php-performance
-description: Use when optimizing PHP performance, configuring OPcache or JIT, setting up caching (Redis, Memcached), tuning database queries (PDO), choosing faster function alternatives, managing memory, or profiling. Covers OPcache configuration, preloading, JIT, micro-optimizations, function choices, loops, casting, memory management, SPL data structures, PDO best practices, and caching patterns.
+description: Use when optimizing PHP performance, configuring OPcache or JIT, setting up caching (Redis, Memcached), tuning database queries (PDO), choosing faster function alternatives, managing memory, or profiling. Covers OPcache configuration, opcache.validate_timestamps, preload, preloading, php.ini tuning, memory_limit, realpath_cache, JIT tracing, micro-optimizations, function choices, loops, casting, memory management, connection pooling, lazy loading, N+1 query problem, SPL data structures, SplFixedArray, PDO best practices, caching patterns, Xdebug profiler, and Blackfire production profiling.
 ---
 
 # PHP Performance

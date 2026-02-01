@@ -1,6 +1,6 @@
 ---
 name: elementor-controls
-description: Use when adding controls to Elementor widgets, creating custom controls, using group controls, responsive controls, selectors, conditional display, dynamic content, or referencing control type parameters
+description: Use when adding controls to Elementor widgets, creating custom controls, or referencing control type parameters. Covers add_control with types (TEXT, SELECT, SLIDER, COLOR, MEDIA, REPEATER, CHOOSE, NUMBER, SWITCHER, URL, ICONS), TYPOGRAPHY and BACKGROUND group controls, BORDER, BOX_SHADOW group controls, add_responsive_control, add_group_control, CSS selectors ({{WRAPPER}}, {{VALUE}}), condition and conditions for conditional display, dynamic content tags, POPOVER_TOGGLE, and global styles integration.
 ---
 
 # Elementor Controls Reference

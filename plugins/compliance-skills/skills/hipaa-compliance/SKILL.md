@@ -1,6 +1,6 @@
 ---
 name: hipaa-compliance
-description: Use when handling health data, patient records, medical systems, ePHI, healthcare APIs, EHR integrations, telehealth, health apps, or any code processing Protected Health Information — HIPAA Security Rule technical safeguards, PHI identification, de-identification, audit controls, BAA requirements
+description: Use when handling health data, patient records, medical systems, PHI, ePHI, healthcare APIs, EHR integrations, telehealth, health apps, or any code processing Protected Health Information — HIPAA Security Rule technical safeguards, 18 identifiers, Safe Harbor, Expert Determination, 164.312, access control, audit log, encryption at rest, encryption in transit, BAA, Business Associate Agreement, minimum necessary, breach notification, HHS, OCR, de-identification
 ---
 
 # HIPAA Compliance Coding Guidelines

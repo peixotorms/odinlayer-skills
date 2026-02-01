@@ -1,6 +1,6 @@
 ---
 name: rust-async
-description: Use when writing async or concurrent Rust code with tokio, channels, mutexes, threads, or spawn. Covers async patterns, channel types, deadlock prevention, blocking in async, mutex across await, select, JoinSet, CancellationToken, and thread safety.
+description: Use when writing async or concurrent Rust code with tokio, async-std, futures, channels, mutexes, threads, spawn, or runtime. Covers async patterns, Pin, poll, Stream, timeout, graceful shutdown, task management, blocking in async, mutex across await, select, JoinSet, CancellationToken, sync primitives, broadcast, mpsc, oneshot, watch channels, deadlock prevention, and thread safety.
 ---
 
 # Concurrency & Async

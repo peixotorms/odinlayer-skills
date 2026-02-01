@@ -1,6 +1,6 @@
 ---
 name: wp-rest-api
-description: Use when building WordPress REST API endpoints, custom routes, controllers, or using the Abilities API — route registration, schema validation, permission callbacks, authentication, response shaping, field registration, Abilities API for declarative permissions.
+description: Use when building WordPress REST API endpoints, custom routes, controllers, or using the Abilities API. Covers register_rest_route, WP_REST_Controller, WP_REST_Request, WP_REST_Response, permission_callback, JSON schema validation, sanitize_callback, register_rest_field, register_post_meta with show_in_rest, wp_remote_get, wp-json endpoints (/wp/v2/), authentication (JWT, application passwords, OAuth, cookie nonce), response shaping, pagination, Batch API, custom post type REST exposure, and the Abilities API for declarative permissions.
 ---
 
 # WP REST API & Abilities API

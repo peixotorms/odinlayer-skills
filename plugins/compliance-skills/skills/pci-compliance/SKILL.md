@@ -1,6 +1,6 @@
 ---
 name: pci-compliance
-description: Use when building payment processing, handling credit card data, implementing checkout flows, tokenization, or any code that touches cardholder information — PCI DSS coding patterns, data classification, encryption, audit logging, scope reduction
+description: Use when building payment processing, handling credit card data, PAN, CVV, cardholder data environment (CDE), implementing checkout flows, tokenization, Stripe, Braintree, or any code that touches cardholder information — PCI DSS v4.0 coding patterns, SAQ selection, data classification, AES-256 encryption, TLS 1.2, audit log, data masking, Luhn validation, payment gateway integration, 3-D Secure, scope reduction, network segmentation
 ---
 
 # PCI DSS Compliance Coding Guidelines

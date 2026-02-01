@@ -1,6 +1,6 @@
 ---
 name: wp-plugins
-description: Use when building WordPress plugins or themes — architecture, lifecycle hooks, settings API, data storage, custom tables, WP-CLI commands, PHPStan configuration, PHPCS, testing, build and deploy workflow.
+description: Use when building WordPress plugins or themes. Covers plugin architecture, plugin header and text domain, register_activation_hook, register_deactivation_hook, uninstall.php, settings API (add_options_page, register_setting), $wpdb and dbDelta for custom tables, schema upgrades, transients, data storage patterns, WP_CLI custom commands, PHPStan configuration, phpcs (WordPress coding standards linting), PHPUnit testing, wp scaffold plugin, PSR-4 autoloading, and build/deploy workflows.
 ---
 
 # WordPress Plugin & Theme Development

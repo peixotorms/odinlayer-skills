@@ -1,6 +1,6 @@
 ---
 name: rust-embedded
-description: Use when developing embedded, no_std, or bare-metal Rust for microcontrollers (ARM, RISC-V, ESP32, STM32, nRF). Covers no_std setup, heapless collections, interrupt-safe state with Mutex RefCell, HAL peripheral ownership, RTIC, Embassy, and cortex-m patterns.
+description: Use when developing embedded, no_std, or bare-metal Rust for microcontrollers (ARM, RISC-V, ESP32, STM32, nRF). Covers HAL, PAC, probe-rs, defmt logging, panic-halt, alloc, static mut, volatile access, DMA, interrupt handler, real-time constraints, no_std setup, heapless collections, interrupt-safe state with Mutex RefCell, peripheral ownership, RTIC, Embassy, and cortex-m patterns.
 ---
 
 # Embedded Development

@@ -1,6 +1,6 @@
 ---
 name: wp-security
-description: Use when handling user input, database queries, file operations, authentication, or output in WordPress — escaping, nonces, sanitization, SQL safety, capabilities, file uploads, AJAX security, REST API permissions.
+description: Use when handling user input, database queries, file operations, authentication, or output in WordPress. Covers XSS prevention, CSRF protection, SQL injection prevention, prepared statements with $wpdb->prepare, nonces (wp_nonce_field, check_ajax_referer, wp_verify_nonce), authorization with current_user_can, input sanitization (sanitize_text_field, wp_unslash), output escaping (esc_html, esc_attr, esc_url, esc_js), wp_kses_post, wp_kses, DISALLOW_FILE_EDIT, file upload validation, safe redirects, AJAX security, and REST API permission_callback patterns.
 ---
 
 # WordPress Security

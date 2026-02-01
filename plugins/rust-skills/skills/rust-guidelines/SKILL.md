@@ -1,6 +1,6 @@
 ---
 name: rust-guidelines
-description: Use when writing, reviewing, refactoring, building, or deploying Rust code. Covers error handling, API design, type-driven design, ownership, lifetimes, smart pointers, generics, trait objects, domain modeling, resource lifecycle (RAII), documentation, naming, logging, lints, ecosystem integration, build/deploy workflow, test file placement, and anti-patterns. For unsafe/FFI see rust-unsafe, for async/concurrency see rust-async, for performance see rust-performance.
+description: Use when writing, reviewing, refactoring, building, or deploying Rust code. Covers Result, Option, error handling with thiserror and anyhow, API design, type-driven design, ownership, lifetimes, smart pointers, generics, trait objects, domain modeling, resource lifecycle (RAII), documentation, naming, logging, lints with clippy, cargo, modules, visibility, pub(crate), From/Into conversions, Display trait, derive macros, serde serialization, ecosystem integration, build/deploy workflow, test file placement, and anti-patterns. For unsafe/FFI see rust-unsafe, for async/concurrency see rust-async, for performance see rust-performance.
 ---
 
 # Rust Guidelines

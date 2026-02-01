@@ -1,6 +1,6 @@
 ---
 name: php-security
-description: Use when handling user input, database queries, file operations, authentication, sessions, or any security-sensitive PHP code. Covers SQL injection, XSS, CSRF, input validation (filter_var, FILTER_VALIDATE_*, FILTER_SANITIZE_*), output escaping by context, password hashing, file upload security, session management, serialization security, process execution security, error exposure, php.ini hardening (open_basedir, disable_functions, allow_url_include), OWASP Top 10 for PHP, and common vulnerability patterns.
+description: Use when handling user input, database queries, file operations, authentication, sessions, or any security-sensitive PHP code. Covers SQL injection prevention with prepared statements, PDO parameterized queries, XSS with htmlspecialchars, CSRF tokens, input validation (filter_var, FILTER_VALIDATE_*, FILTER_SANITIZE_*), output escaping by context, password_hash, password_verify, bcrypt, Argon2, file upload security, session management, SameSite cookies, Content-Security-Policy headers, serialization security, process execution security, error exposure, php.ini hardening (open_basedir, disable_functions, allow_url_include), OWASP Top 10 for PHP, rate limiting, brute force protection, directory traversal, path traversal, and common vulnerability patterns.
 ---
 
 # PHP Security

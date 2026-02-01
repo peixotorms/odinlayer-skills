@@ -1,6 +1,6 @@
 ---
 name: php-networking
-description: Use when making HTTP requests with cURL, parallel requests with multi-curl, writing regex patterns (PCRE), or doing parallel/async execution (pcntl_fork, stream_select, parallel extension, fibers). Covers cURL options, multi-curl patterns, regex modifiers, ReDoS prevention, named captures, process control, non-blocking I/O, and stream multiplexing.
+description: Use when making HTTP requests with cURL, parallel requests with multi-curl, writing regex patterns (PCRE), or doing parallel/async execution (pcntl_fork, stream_select, parallel extension, fibers). Covers cURL options (CURLOPT_TIMEOUT, CURLOPT_CONNECTTIMEOUT, CURLOPT_SSL_VERIFYPEER), HTTP client, Guzzle, file_get_contents, stream_context, socket programming, WebSocket, DNS resolution, proxy configuration, SSL/TLS certificate verification, multi-curl patterns, regex modifiers, named groups, lookahead, lookbehind, ReDoS prevention, named captures, process control, non-blocking I/O, and stream multiplexing.
 ---
 
 # PHP Networking, Regex & Parallel Execution

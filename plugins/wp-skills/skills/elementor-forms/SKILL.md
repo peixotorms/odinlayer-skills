@@ -1,6 +1,6 @@
 ---
 name: elementor-forms
-description: Use when creating custom Elementor form actions, custom form field types, form validation, processing form submissions, or extending Elementor Pro forms functionality
+description: Use when creating custom Elementor form actions, custom form field types, form validation, or processing form submissions. Covers Elementor Pro forms (ElementorPro\Modules\Forms), Action_Base (get_name, get_label, run, register_settings_section, on_export), after_submit processing, Field_Base (field_type, render field HTML, validation callback, update_controls), content_template for editor preview, form action registration, export_type handling, update_record patterns, elementor_pro/forms/validation hook, email filters, and webhook response handling.
 ---
 
 # Elementor Forms Extension Reference

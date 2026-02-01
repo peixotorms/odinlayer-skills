@@ -1,6 +1,6 @@
 ---
 name: go-guidelines
-description: Use when writing, reviewing, refactoring, building, or deploying Go code. Covers formatting, naming, control structures, functions, defer, data types, methods, interfaces, embedding, initialization, functional options pattern, constructor validation, package organization, generics, testing patterns, linting, build/deploy workflow, test file placement, and common anti-patterns.
+description: Use when writing, reviewing, refactoring, building, or deploying Go code. Covers gofmt, golangci-lint, formatting, naming conventions, control structures, functions, defer, data types, struct, slice, map, pointer, receiver, methods, interfaces, embedding, initialization, functional options pattern, constructor validation, package organization, generics, testing patterns, linting, build/deploy workflow, test file placement, error handling, context, module, go.mod, go.sum, build tags, ldflags, Makefile, and common anti-patterns.
 ---
 
 # Go Guidelines

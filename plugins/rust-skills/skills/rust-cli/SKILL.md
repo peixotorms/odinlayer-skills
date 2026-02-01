@@ -1,6 +1,6 @@
 ---
 name: rust-cli
-description: Use when building command-line tools or TUI apps in Rust with clap, ratatui, or crossterm. Covers argument parsing, subcommands, config precedence, exit codes, stderr/stdout separation, progress bars, and interactive prompts.
+description: Use when building command-line tools or TUI apps in Rust with clap, ratatui, or crossterm. Covers arguments, flags, subcommands, env vars, config files, TOML parsing, colored output with dialoguer and indicatif, terminal control, piping, stdin, stdout, stderr separation, config precedence, exit codes, progress bars, and interactive prompts.
 ---
 
 # CLI Development

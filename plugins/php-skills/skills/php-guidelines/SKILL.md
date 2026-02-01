@@ -1,6 +1,6 @@
 ---
 name: php-guidelines
-description: Use when writing, reviewing, refactoring, building, or deploying PHP code. Covers type system, strict types, OOP (classes, interfaces, traits, enums), modern PHP 8.x features (match, readonly, property hooks, pipe operator), JSON handling, DI and SOLID principles, PSR standards, Composer, functions, generators, fibers, namespaces, error handling, attributes, arrays, strings, version migration (8.0-8.5), testing, build/deploy, and anti-patterns. For security see php-security; for performance see php-performance; for networking/regex see php-networking; for internationalization see php-intl.
+description: Use when writing, reviewing, refactoring, building, or deploying PHP code. Covers type system, declare(strict_types=1), union types, intersection types, nullable types, OOP (classes, interfaces, traits, enums, readonly class, constructor promotion), modern PHP 8.x features (match, named arguments, readonly, property hooks, pipe operator, null safe operator ?->, fiber, enum), JSON handling, DI and SOLID principles, PSR-4 autoloading, PSR-12 coding style, PSR standards, Composer, functions, generators, fibers, namespaces, error handling, attributes, arrays, strings, version migration (8.0-8.5), testing, PHPUnit, PHPStan, build/deploy, and anti-patterns. For security see php-security; for performance see php-performance; for networking/regex see php-networking; for internationalization see php-intl.
 ---
 
 # PHP Guidelines

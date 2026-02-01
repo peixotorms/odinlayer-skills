@@ -1,6 +1,6 @@
 ---
 name: elementor-development
-description: Use when building Elementor addons, creating custom widgets, registering/unregistering components, managing scripts and styles, working with Elementor CLI, or handling deprecations
+description: Use when building Elementor addons, creating custom widgets, or managing Elementor components. Covers Widget_Base class (get_name, get_title, get_icon, register_controls, render, content_template), widget registration via elementor/widgets/register hook, addon structure and plugin header, wp_enqueue_script for widget assets, get_script_depends, get_style_depends, inline editing toolbars, custom widget categories, manager registration (register/unregister), selector tokens ({{WRAPPER}}), deprecation handling, and Elementor CLI commands.
 ---
 
 # Elementor Addon & Widget Development

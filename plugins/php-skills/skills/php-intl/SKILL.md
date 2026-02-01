@@ -1,6 +1,6 @@
 ---
 name: php-intl
-description: Use when working with multibyte strings, UTF-8 encoding, character encoding conversion, locale-aware formatting (dates, numbers, currencies), transliteration, pluralization, or internationalization. Covers mbstring functions, mb_detect_encoding, mb_convert_encoding, intl extension (Collator, NumberFormatter, IntlDateFormatter, MessageFormatter, Transliterator, Normalizer), and the UTF-8 input-to-output pipeline.
+description: Use when working with multibyte strings, UTF-8 encoding, character encoding conversion, locale-aware formatting (dates, numbers, currencies), transliteration, pluralization, or internationalization. Covers mb_strlen, mb_substr, mb_strtolower, mb_strtoupper, mb_detect_encoding, mb_convert_encoding, iconv, grapheme functions, emoji handling, unicode processing, locale-aware sorting, ICU library, intl extension (Collator, NumberFormatter, IntlDateFormatter, MessageFormatter, Transliterator, Normalizer), currency formatting, date formatting, transliteration, string normalization (NFC, NFD, NFKC, NFKD), and the UTF-8 input-to-output pipeline.
 ---
 
 # PHP Internationalization & Encoding

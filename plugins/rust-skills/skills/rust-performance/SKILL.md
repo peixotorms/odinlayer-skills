@@ -1,6 +1,6 @@
 ---
 name: rust-performance
-description: Use when optimizing Rust code performance. Covers profiling, allocation avoidance, Cow, buffer reuse, collection choice, iterator optimization, string optimization, Rayon parallelism, struct memory layout, release build settings, and benchmarking.
+description: Use when optimizing Rust code performance. Covers profiling with flamegraph and perf, benchmarking with criterion, allocation analysis with dhat, Arc, Rc, Cow, SmallVec, arena allocation, zero-copy, SIMD, cache locality, #[inline], LTO, codegen-units, buffer reuse, collection choice, iterator optimization, string optimization, Rayon parallelism, struct memory layout, and release build settings.
 ---
 
 # Performance Optimization

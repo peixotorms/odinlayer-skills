@@ -1,6 +1,6 @@
 ---
 name: woocommerce-extensions
-description: Use when building WooCommerce extensions or integrating with WooCommerce — payment gateways, HPOS order storage, product and order CRUD, Store API, REST API, block checkout, data stores, settings pages, and key hooks.
+description: Use when building WooCommerce extensions or integrating with WooCommerce. Covers WC_Payment_Gateway, WC_Product (wc_get_product), WC_Order (wc_get_order), WC_Data CRUD methods, HPOS (High-Performance Order Storage, OrdersTableDataStore, wc_get_orders, custom_order_tables), Store API endpoints, WooCommerce REST API (/wc/v3/), block checkout (AbstractPaymentMethodType), woocommerce_checkout_process and add_action woocommerce_* hooks, order lifecycle hooks, product hooks, settings pages, custom emails, and FeaturesUtil compatibility declarations.
 ---
 
 # WooCommerce Extension Development

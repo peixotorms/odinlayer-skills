@@ -1,6 +1,6 @@
 ---
 name: wp-javascript
-description: Use when working with JavaScript in WordPress plugins or themes — script enqueuing, AJAX handlers (wp_ajax_), Heartbeat API, wp_localize_script, wp_add_inline_script, jQuery in WordPress, script dependencies, async/defer strategies, and frontend-backend communication patterns.
+description: Use when working with JavaScript in WordPress plugins or themes. Covers wp_enqueue_script, wp_localize_script, wp_add_inline_script, jQuery in WordPress (noConflict mode, $.ajax), AJAX handlers (wp_ajax_, admin-ajax.php, wp_create_nonce, check_ajax_referer), wp.ajax, wp.apiFetch (wp-api-fetch), wp-util and wp.template (Underscore templates), Heartbeat API, script dependencies, defer/async loading strategies (WordPress 6.3+), wp_set_script_translations, and frontend-backend communication patterns.
 ---
 
 # WordPress JavaScript & AJAX

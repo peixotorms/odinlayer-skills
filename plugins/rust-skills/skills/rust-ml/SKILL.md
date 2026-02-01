@@ -1,6 +1,6 @@
 ---
 name: rust-ml
-description: Use when building machine learning or AI inference in Rust. Covers ONNX inference with tract, model singletons with OnceLock, batched inference, GPU with candle or tch-rs, ndarray tensors, and data pipelines with polars.
+description: Use when building machine learning or AI inference in Rust. Covers inference, model loading, tensor operations, GPU and CUDA acceleration, batch processing, feature extraction, embeddings, tokenizer, hugging face integration, deep learning, ONNX with tract, model singletons with OnceLock, candle, tch-rs, ndarray tensors, and data pipelines with polars.
 ---
 
 # Machine Learning Development

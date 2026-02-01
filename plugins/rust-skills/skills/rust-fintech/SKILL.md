@@ -1,6 +1,6 @@
 ---
 name: rust-fintech
-description: Use when building financial, trading, or payment systems in Rust. Covers decimal precision with rust_decimal, currency newtypes, immutable transaction records, audit trails, checked arithmetic, and double-entry patterns.
+description: Use when building financial, trading, or payment systems in Rust. Covers money handling, financial calculations, rounding, decimal precision with rust_decimal and BigDecimal, currency newtypes, ledger, journal entry, reconciliation, idempotency, ACID transactions, regulatory compliance, immutable transaction records, audit trails, checked arithmetic, and double-entry patterns.
 ---
 
 # FinTech Development

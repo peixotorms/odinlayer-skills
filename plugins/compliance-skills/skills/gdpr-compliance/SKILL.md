@@ -1,6 +1,6 @@
 ---
 name: gdpr-compliance
-description: Use when handling personal data, user registration, consent forms, cookie banners, data export, account deletion, privacy policies, or any code processing EU/EEA user data — GDPR coding patterns, consent management, data subject rights, privacy by design
+description: Use when handling personal data, user registration, consent forms, cookie consent banners, data export, account deletion, privacy policies, or any code processing EU/EEA user data — GDPR coding patterns, Article 5, Article 6, lawful basis, legitimate interest, right to erasure, right to access, data portability, DPIA, DPO, 72-hour breach notification, Privacy Shield, Standard Contractual Clauses, data minimization, consent management, data subject rights, privacy by design
 ---
 
 # GDPR Compliance Coding Guidelines

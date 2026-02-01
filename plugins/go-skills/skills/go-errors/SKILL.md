@@ -1,6 +1,6 @@
 ---
 name: go-errors
-description: Use when handling errors in Go code. Covers error interface, error wrapping with fmt.Errorf and %w, errors.Is, errors.As, sentinel errors, custom error types, panic and recover, error handling patterns, and common error handling mistakes.
+description: Use when handling errors in Go code. Covers error interface, fmt.Errorf, %w verb, unwrap, error chain, error wrapping, errors.Is, errors.As, sentinel errors, custom error type, panic and recover, error handling strategy, error handling patterns, stack trace, pkg/errors, error group, errgroup, multi-error, validation errors, in-band errors, error type switch, and common error handling mistakes.
 ---
 
 # Go Error Handling

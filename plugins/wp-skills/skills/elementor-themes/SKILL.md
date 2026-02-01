@@ -1,6 +1,6 @@
 ---
 name: elementor-themes
-description: Use when building Elementor-compatible themes, registering theme locations, creating theme conditions, building dynamic tags, extending the Finder, customizing context menus, working with Hello Elementor theme, or implementing hosting cache integration
+description: Use when building Elementor-compatible themes, registering theme locations, creating dynamic tags, or extending the Finder. Covers register_location, theme_builder locations, elementor_theme_do_location, Theme_Document and theme conditions, Tag_Base for dynamic tags (register_tag, get_value, render), Finder extension (Category_Base, register via elementor/finder/register), Context_Menu customization (elements/context-menu/groups filter), Hello Elementor theme (elementor-hello-theme, hello_elementor_* filters), and hosting page cache integration hooks.
 ---
 
 ## 1. Theme Builder Locations

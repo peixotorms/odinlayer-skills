@@ -1,6 +1,6 @@
 ---
 name: sox-compliance
-description: Use when building financial reporting systems, accounting software, ERP integrations, payment reconciliation, ledger systems, audit trails, or any code handling financial data at publicly traded companies — SOX Section 302/404 controls, ITGC, segregation of duties, change management, audit logging
+description: Use when building financial reporting systems, accounting software, ERP integrations, payment reconciliation, ledger systems, audit trails, or any code handling financial data at publicly traded companies — SOX Section 302, Section 404, ITGC, IT General Controls, segregation of duties, SoD, change management, access review, audit trail, hash chain, WORM storage, 7-year retention, COSO framework, material weakness, internal controls, audit logging
 ---
 
 # SOX (Sarbanes-Oxley) Compliance Coding Guidelines

@@ -1,6 +1,6 @@
 ---
 name: accessibility-compliance
-description: Use when building web interfaces, HTML templates, forms, navigation, modals, dynamic content, media players, or any user-facing UI — WCAG 2.1/2.2 patterns, ARIA roles, semantic HTML, keyboard navigation, screen reader support, color contrast
+description: Use when building web interfaces, HTML templates, forms, navigation, modals, dynamic content, media players, or any user-facing UI — WCAG 2.1, WCAG 2.2, Level A, Level AA, POUR principles, alt text, aria-label, aria-describedby, role, tabindex, focus management, color contrast, 4.5:1 ratio, screen reader, NVDA, VoiceOver, axe, lighthouse, ARIA roles, semantic HTML, keyboard navigation
 ---
 
 ## 1. Overview

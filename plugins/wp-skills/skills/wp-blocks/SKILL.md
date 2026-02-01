@@ -1,6 +1,6 @@
 ---
 name: wp-blocks
-description: Use when building Gutenberg blocks, block themes, or using the Interactivity API — block.json, static and dynamic rendering, InnerBlocks, deprecations, theme.json, templates, patterns, data-wp-* directives, server-side rendering, WordPress 6.9 features.
+description: Use when building Gutenberg blocks, block themes, or using the Interactivity API. Covers block.json configuration, register_block_type, @wordpress/scripts tooling, useBlockProps, RichText, InspectorControls, BlockControls, wp-block-editor packages, static and dynamic rendering, InnerBlocks, deprecations, theme.json, FSE (full site editing), template parts, block patterns, block variations, data-wp-* directives, server-side rendering, and WordPress 6.9 features.
 ---
 
 # WP Blocks, Block Themes, and Interactivity API
