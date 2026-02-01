@@ -4,7 +4,7 @@ Comprehensive WordPress, WooCommerce, and Elementor guidelines as focused Claude
 
 ## What's Included
 
-### WordPress Core (9 skills)
+### WordPress Core (8 skills)
 
 | Skill | Focus |
 |-------|-------|
@@ -17,11 +17,14 @@ Comprehensive WordPress, WooCommerce, and Elementor guidelines as focused Claude
 | `wp-apis` | Core APIs — admin menus, shortcodes, meta boxes, CPTs, taxonomies, HTTP API, WP-Cron, dashboard widgets, users/roles, privacy (GDPR), theme mods, Site Health, responsive images |
 | `wp-javascript` | Script enqueuing, wp_localize_script, wp_add_inline_script, AJAX handlers (wp_ajax_), Heartbeat API, wp.apiFetch, jQuery noConflict, wp.template, defer/async |
 
-### WooCommerce (1 skill)
+### WooCommerce (4 skills)
 
 | Skill | Focus |
 |-------|-------|
-| `woocommerce-extensions` | Payment gateways (WC_Payment_Gateway), DI container, HPOS order storage, product/order/customer CRUD, Store API, REST API, block checkout integration, settings pages, custom emails, key hooks, testing conventions, WP-CLI |
+| `woocommerce-setup` | Extension architecture, plugin headers, WooCommerce availability check, FeaturesUtil compatibility declarations (HPOS, block checkout), DI container |
+| `woocommerce-payments` | Payment gateways (WC_Payment_Gateway), process_payment, process_refund, tokenization, block checkout (AbstractPaymentMethodType, registerPaymentMethod) |
+| `woocommerce-data` | HPOS order storage, wc_get_order, wc_get_orders, product/customer CRUD, Store API, REST API (/wc/v3/), ExtendSchema |
+| `woocommerce-hooks` | Order lifecycle, cart/checkout, product, email, admin hooks, settings pages, custom WC_Email classes, WP-CLI, testing with WC_Unit_Test_Case |
 
 ### Elementor (5 skills)
 

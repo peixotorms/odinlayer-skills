@@ -39,8 +39,8 @@
     },
     {
       "name": "wp-skills",
-      "description": "Comprehensive WordPress guidelines — 14 focused skills covering coding standards, security, performance, Gutenberg blocks, REST API, plugin development, core APIs, JavaScript/AJAX, WooCommerce extensions, and Elementor addon development.",
-      "version": "1.4.0",
+      "description": "Comprehensive WordPress guidelines — 17 focused skills covering coding standards, security, performance, Gutenberg blocks, REST API, plugin development, core APIs, JavaScript/AJAX, WooCommerce (setup, payments, data, hooks), and Elementor addon development.",
+      "version": "1.5.0",
       "author": {
         "name": "Raul P."
       },
