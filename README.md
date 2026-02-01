@@ -11,6 +11,7 @@ claude plugin marketplace add peixotorms/odinlayer-skills
 # 2. Install the plugins you want
 claude plugin install rust-skills
 claude plugin install go-skills
+claude plugin install php-skills
 ```
 
 ## Available Plugins
@@ -84,6 +85,36 @@ One install gives you all 3 skills. Claude loads only the relevant ones per conv
 - [Google Go Style Guide](https://google.github.io/styleguide/go/)
 - [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
 - [Go Proverbs](https://go-proverbs.github.io/)
+
+---
+
+### php-skills
+
+**Comprehensive PHP guidelines** — 2 focused skills covering modern PHP 8.x patterns, type system, OOP, security, and version migration.
+
+```bash
+claude plugin install php-skills
+```
+
+One install gives you both skills. Claude loads only the relevant ones per conversation.
+
+**Skills included:**
+
+| Skill | Auto-activates when... |
+|-------|------------------------|
+| `php-guidelines` | Writing, reviewing, or deploying PHP code — type system, strict types, OOP, enums, modern PHP 8.x patterns, generators, fibers, namespaces, error handling, performance, version migration (8.0-8.5), testing, build/deploy, anti-patterns |
+| `php-security` | Handling user input, database queries, file operations, authentication — SQL injection, XSS, CSRF, password hashing, session management, file uploads, cryptography |
+
+**Command included:**
+
+| Command | Description |
+|---------|-------------|
+| `/php-review` | Review any PHP file against the guidelines. Usage: `/php-review src/Controller/UserController.php` |
+
+**Sources:**
+
+- [PHP Manual](https://www.php.net/manual/en/)
+- PHP 8.0-8.5 Migration Guides
 
 ## Managing Plugins
 

@@ -26,6 +26,16 @@
       },
       "source": "./plugins/go-skills",
       "category": "development"
+    },
+    {
+      "name": "php-skills",
+      "description": "Comprehensive PHP guidelines — 2 focused skills covering modern PHP 8.x patterns, type system, OOP, performance, version migration, security, and anti-patterns.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Raul P."
+      },
+      "source": "./plugins/php-skills",
+      "category": "development"
     }
   ]
 }
