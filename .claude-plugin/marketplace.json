@@ -18,6 +18,16 @@
       "category": "development"
     },
     {
+      "name": "build-deploy",
+      "description": "Build, deploy, and testing workflow rules — Makefile detection, temporary file hygiene, permission checks, and test file placement.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Raul P."
+      },
+      "source": "./plugins/build-deploy",
+      "category": "development"
+    },
+    {
       "name": "go-skills",
       "description": "Comprehensive Go guidelines — focused skills covering core idioms, concurrency patterns, and error handling based on Effective Go.",
       "version": "1.0.0",

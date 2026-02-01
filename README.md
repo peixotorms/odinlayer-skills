@@ -11,6 +11,7 @@ claude plugin marketplace add peixotorms/odinlayer-skills
 # 2. Install the plugins you want
 claude plugin install rust-skills
 claude plugin install go-skills
+claude plugin install build-deploy
 ```
 
 ## Available Plugins
@@ -84,6 +85,29 @@ One install gives you all 3 skills. Claude loads only the relevant ones per conv
 - [Google Go Style Guide](https://google.github.io/styleguide/go/)
 - [Go Code Review Comments](https://go.dev/wiki/CodeReviewComments)
 - [Go Proverbs](https://go-proverbs.github.io/)
+
+---
+
+### build-deploy
+
+**Language-agnostic build & deploy workflow rules** — Makefile detection, permission checks, temp file hygiene, and test file placement.
+
+```bash
+claude plugin install build-deploy
+```
+
+**Skills included:**
+
+| Skill | Auto-activates when... |
+|-------|------------------------|
+| `build-deploy` | Building, deploying, restarting, rebuilding, running make, generating build artifacts, or creating test files |
+
+**Key rules:**
+
+- Always check for and use `Makefile` before raw build commands
+- Build intermediates go to `/tmp`, not the project directory
+- Check and fix file permissions/ownership before building
+- Temporary tests to `/tmp`; permanent tests to `tests/` (created if needed)
 
 ## Managing Plugins
 
