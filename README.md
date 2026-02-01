@@ -1,12 +1,12 @@
-# OdinPanel Skills Marketplace
+# AI Skills Marketplace
 
-A curated collection of Claude Code plugins for OdinPanel development.
+A curated collection of Claude Code plugins for development best practices.
 
 ## Installation
 
 ```bash
 # Add this marketplace
-claude plugin marketplace add /home/skills
+claude plugin marketplace add peixotorms/ai-skills
 
 # Install plugins
 claude plugin install rust-skills

@@ -1,9 +1,9 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "odinpanel-skills",
-  "description": "OdinPanel development skills and tools for Claude Code",
+  "name": "ai-skills",
+  "description": "AI skills and tools for Claude Code — curated development guidelines, review commands, and coding standards.",
   "owner": {
-    "name": "OdinPanel"
+    "name": "peixotorms"
   },
   "plugins": [
     {
