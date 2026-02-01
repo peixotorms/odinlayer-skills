@@ -90,20 +90,23 @@ One install gives you all 3 skills. Claude loads only the relevant ones per conv
 
 ### php-skills
 
-**Comprehensive PHP guidelines** — 2 focused skills covering modern PHP 8.x patterns, type system, OOP, security, and version migration.
+**Comprehensive PHP guidelines** — 5 focused skills covering modern PHP 8.x patterns, type system, OOP, security, performance, networking, internationalization, and version migration.
 
 ```bash
 claude plugin install php-skills
 ```
 
-One install gives you both skills. Claude loads only the relevant ones per conversation.
+One install gives you all 5 skills. Claude loads only the relevant ones per conversation based on what you're working on.
 
 **Skills included:**
 
 | Skill | Auto-activates when... |
 |-------|------------------------|
-| `php-guidelines` | Writing, reviewing, or deploying PHP code — type system, strict types, OOP, enums, modern PHP 8.x patterns, generators, fibers, namespaces, error handling, performance, version migration (8.0-8.5), testing, build/deploy, anti-patterns |
-| `php-security` | Handling user input, database queries, file operations, authentication — SQL injection, XSS, CSRF, password hashing, session management, file uploads, cryptography |
+| `php-guidelines` | Writing, reviewing, or deploying PHP code — type system, strict types, OOP, enums, modern PHP 8.x patterns, DI & SOLID, PSR standards, Composer, JSON, functions, generators, fibers, namespaces, error handling, attributes, version migration (8.0-8.5), testing, build/deploy, anti-patterns |
+| `php-security` | Handling user input, database queries, file operations, authentication — SQL injection, XSS, CSRF, input validation, output escaping, password hashing, session management, serialization security, file uploads, cryptography, php.ini hardening (OWASP) |
+| `php-performance` | Optimizing performance — OPcache, JIT, preloading, database (PDO), caching (Redis, Memcached), SPL data structures, micro-optimizations, memory management, profiling |
+| `php-networking` | Making HTTP requests with cURL, multi-curl, writing regex (PCRE), parallel/async execution (pcntl_fork, stream_select, parallel extension, fibers) |
+| `php-intl` | Working with multibyte strings, UTF-8 encoding, internationalization (mbstring, intl extension, Collator, NumberFormatter, IntlDateFormatter, Transliterator) |
 
 **Command included:**
 
@@ -114,6 +117,8 @@ One install gives you both skills. Claude loads only the relevant ones per conve
 **Sources:**
 
 - [PHP Manual](https://www.php.net/manual/en/)
+- [OWASP Cheat Sheet Series](https://cheatsheetseries.owasp.org/)
+- [PHP The Right Way](https://phptherightway.com/)
 - PHP 8.0-8.5 Migration Guides
 
 ## Managing Plugins

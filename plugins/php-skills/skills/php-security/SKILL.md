@@ -1,6 +1,6 @@
 ---
 name: php-security
-description: Use when handling user input, database queries, file operations, authentication, sessions, or any security-sensitive PHP code. Covers SQL injection prevention, XSS, CSRF, input validation, password hashing, file upload security, session management, error exposure, and common vulnerability patterns.
+description: Use when handling user input, database queries, file operations, authentication, sessions, or any security-sensitive PHP code. Covers SQL injection, XSS, CSRF, input validation (filter_var, FILTER_VALIDATE_*, FILTER_SANITIZE_*), output escaping by context, password hashing, file upload security, session management, serialization security, process execution security, error exposure, php.ini hardening (open_basedir, disable_functions, allow_url_include), OWASP Top 10 for PHP, and common vulnerability patterns.
 ---
 
 # PHP Security
@@ -135,22 +135,97 @@ if (password_needs_rehash($storedHash, PASSWORD_DEFAULT)) {
 
 ## Input Validation & Sanitization
 
+### Validation Filters (FILTER_VALIDATE_*)
+
 ```php
-// Filter functions
-$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
-$age = filter_input(INPUT_POST, 'age', FILTER_VALIDATE_INT, [
+// Email — RFC 822 syntax only (doesn't confirm existence)
+$email = filter_var($input, FILTER_VALIDATE_EMAIL);
+
+// Integer with range
+$age = filter_var($input, FILTER_VALIDATE_INT, [
     'options' => ['min_range' => 0, 'max_range' => 150]
 ]);
-$url = filter_input(INPUT_POST, 'url', FILTER_VALIDATE_URL);
 
-// Manual validation
-if (!is_string($name) || mb_strlen($name) > 255) {
-    throw new ValidationException('Invalid name');
+// Float with range (PHP 7.4+)
+$price = filter_var($input, FILTER_VALIDATE_FLOAT, [
+    'options' => ['min_range' => 0.01, 'max_range' => 99999.99]
+]);
+
+// IP address — exclude private/reserved ranges
+$ip = filter_var($input, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE);
+
+// URL — ASCII only (IDN domains always rejected)
+$url = filter_var($input, FILTER_VALIDATE_URL);
+
+// Boolean — "1","true","on","yes" → true; "0","false","off","no" → false
+$flag = filter_var($input, FILTER_VALIDATE_BOOL, FILTER_NULL_ON_FAILURE);
+
+// Domain (RFC 952/1034)
+$domain = filter_var($input, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME);
+
+// Custom regex
+$code = filter_var($input, FILTER_VALIDATE_REGEXP, ['options' => ['regexp' => '/^[A-Z]{3}-\d{4}$/']]);
+
+// filter_input reads from superglobal directly (safer than $_POST)
+$email = filter_input(INPUT_POST, 'email', FILTER_VALIDATE_EMAIL);
+```
+
+### Sanitization Filters (FILTER_SANITIZE_*)
+
+| Filter | Effect | Notes |
+|--------|--------|-------|
+| `FILTER_SANITIZE_FULL_SPECIAL_CHARS` | Encodes `<>"'&` (like `htmlspecialchars`) | Preferred over deprecated `FILTER_SANITIZE_STRING` |
+| `FILTER_SANITIZE_EMAIL` | Removes all except `[a-zA-Z0-9!#$%&'*+-=?^_\`{\|}~@.\[\]]` | |
+| `FILTER_SANITIZE_URL` | Removes chars not valid in URLs | |
+| `FILTER_SANITIZE_NUMBER_INT` | Keeps only `[0-9+-]` | |
+| `FILTER_SANITIZE_NUMBER_FLOAT` | Keeps only `[0-9+-]` + optional `.` `,` `eE` | Use `FILTER_FLAG_ALLOW_FRACTION` |
+| `FILTER_SANITIZE_ADD_SLASHES` | Applies `addslashes()` (PHP 7.3+) | |
+| `FILTER_SANITIZE_ENCODED` | URL-encodes string | |
+| `FILTER_SANITIZE_STRING` | **DEPRECATED PHP 8.1** — use `htmlspecialchars()` | |
+
+### Output Escaping by Context
+
+| Context | Function | Example |
+|---------|----------|---------|
+| HTML body/attribute | `htmlspecialchars($s, ENT_QUOTES \| ENT_SUBSTITUTE, 'UTF-8')` | `<p><?= e($name) ?></p>` |
+| JavaScript | `json_encode($s, JSON_HEX_TAG \| JSON_HEX_AMP)` | `var x = <?= json_encode($val) ?>` |
+| URL parameter | `urlencode($s)` (space=`+`) or `rawurlencode($s)` (space=`%20`) | `?q=<?= urlencode($q) ?>` |
+| Shell argument | `escapeshellarg($s)` | Single arg only |
+| Shell command | `escapeshellcmd($s)` | Less safe — prefer `escapeshellarg` |
+| CSS | Avoid user input; whitelist if needed | |
+
+### Serialization Security
+
+```php
+// NEVER unserialize user input — remote code execution risk!
+// __unserialize()/__wakeup() magic methods execute on deserialization
+// Autoloading can trigger arbitrary code
+
+// BAD
+$data = unserialize($_COOKIE['prefs']);
+
+// GOOD — use JSON for untrusted data
+$data = json_decode($_COOKIE['prefs'], true, 512, JSON_THROW_ON_ERROR);
+
+// If you must use serialized data from storage, verify integrity
+$expected = hash_hmac('sha256', $serialized, $secretKey);
+if (!hash_equals($expected, $providedHmac)) {
+    throw new SecurityException('Tampered data');
 }
+```
 
-// Type casting (strict mode helps, but validate boundaries)
-$id = (int) $_GET['id'];
-if ($id <= 0) { throw new NotFoundException(); }
+### Process Execution Security
+
+```php
+// BEST: Array command format bypasses shell entirely (PHP 7.4+)
+$proc = proc_open(['convert', $inputFile, '-resize', '800x600', $outputFile], $spec, $pipes);
+
+// If shell is needed, escape every argument
+$safe = escapeshellarg($userInput);  // wraps in single quotes
+
+// NEVER pass user input directly to shell functions
+// BAD:  system("convert $file");
+// GOOD: system("convert " . escapeshellarg($file));
 ```
 
 | Rule | Detail |
@@ -159,7 +234,12 @@ if ($id <= 0) { throw new NotFoundException(); }
 | Whitelist over blacklist | Accept known-good, reject everything else |
 | Don't use `$_REQUEST` | Ambiguous source — specify `$_GET`, `$_POST`, `$_COOKIE` |
 | `$_SERVER` values can be spoofed | `HTTP_*` headers are user-controlled |
-| `filter_input()` for simple cases | Manual validation for complex rules |
+| `filter_input()` over `$_POST` | Reads from superglobal directly |
+| `FILTER_NULL_ON_FAILURE` | Returns `null` instead of `false` — useful for booleans |
+| `FILTER_VALIDATE_EMAIL` is basic | Only validates syntax, not existence |
+| `FILTER_VALIDATE_URL` ASCII only | IDN domains always fail |
+| Never `unserialize()` user data | Use JSON; verify HMAC for stored serialized data |
+| Array format in `proc_open()` | Bypasses shell entirely — safest option |
 
 ## File Upload Security
 
@@ -308,6 +388,63 @@ header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
 ini_set('expose_php', '0');
 ```
 
+## php.ini Hardening (OWASP)
+
+### Error and Information Disclosure
+
+| Directive | Production Value | Purpose |
+|-----------|-----------------|---------|
+| `expose_php` | `Off` | Hide PHP version from headers |
+| `display_errors` | `Off` | Never show errors to users |
+| `display_startup_errors` | `Off` | Hide startup errors |
+| `log_errors` | `On` | Log to file, not stdout |
+| `error_reporting` | `E_ALL` | Report everything, log everything |
+| `error_log` | `/var/log/php/error.log` | Secure log location |
+
+### Filesystem and Includes
+
+| Directive | Production Value | Purpose |
+|-----------|-----------------|---------|
+| `open_basedir` | `/var/www/app/` | Restrict file access to app directory |
+| `allow_url_fopen` | `Off` | Prevent remote file inclusion |
+| `allow_url_include` | `Off` | Blocks remote code inclusion |
+| `doc_root` | Set appropriately | Limit accessible filesystem |
+
+### Disable Unused Functions
+
+Use `disable_functions` in php.ini to disable functions your application does not need. Audit which functions are actually used. Common candidates: `phpinfo`, `show_source`, `pcntl_fork`, `pcntl_exec`, and any shell-related functions not required by the app.
+
+### File Uploads (php.ini)
+
+| Directive | Value | Purpose |
+|-----------|-------|---------|
+| `file_uploads` | `Off` (if unused) | Disable entirely if not needed |
+| `upload_max_filesize` | `2M` (or app minimum) | Limit upload size |
+| `max_file_uploads` | `2` (or app minimum) | Limit concurrent uploads |
+| `upload_tmp_dir` | Dedicated directory | Isolate temp uploads |
+
+### Session Hardening (php.ini)
+
+| Directive | Value | Purpose |
+|-----------|-------|---------|
+| `session.use_strict_mode` | `1` | Reject uninitialized session IDs |
+| `session.use_only_cookies` | `1` | Never pass session ID in URL |
+| `session.cookie_httponly` | `1` | Block JavaScript access to session cookie |
+| `session.cookie_secure` | `1` | HTTPS-only session cookies |
+| `session.cookie_samesite` | `Strict` | Strongest CSRF protection |
+| `session.sid_length` | `128` | Longer session IDs harder to brute-force |
+| `session.gc_maxlifetime` | `600` | Expire idle sessions (10 min) |
+| `session.name` | Custom value | Avoid default `PHPSESSID` — reduces fingerprinting |
+
+### Resource Limits
+
+| Directive | Value | Purpose |
+|-----------|-------|---------|
+| `max_execution_time` | `30` | Prevent runaway scripts |
+| `max_input_time` | `30` | Limit input parsing time |
+| `memory_limit` | `128M` | Prevent memory exhaustion |
+| `post_max_size` | `8M` | Limit POST body size |
+
 ## Error Exposure
 
 | Rule | Detail |
@@ -330,6 +467,8 @@ ini_set('expose_php', '0');
 | File upload attacks | MIME validation + random names + store outside webroot |
 | Timing attacks | `hash_equals()` for all comparisons |
 | Insecure deserialization | Never `unserialize()` user data; use JSON |
+| PHP Object Injection | `unserialize()` triggers `__wakeup()`, `__destruct()` magic methods — attacker-crafted objects can delete files, inject SQL, run code |
+| Remote File Inclusion | `allow_url_include = Off`, `allow_url_fopen = Off` in php.ini |
 | Open redirect | Whitelist redirect targets |
 | Mass assignment | Explicit field lists, never `extract()` on user data |
 | Header injection | Validate/strip `\r\n` from header values |
@@ -350,4 +489,13 @@ ini_set('expose_php', '0');
 - [ ] `display_errors = Off` in production
 - [ ] CSP and security headers set
 - [ ] `expose_php = Off`
+- [ ] `open_basedir` restricts file access
+- [ ] `allow_url_include = Off` and `allow_url_fopen = Off`
+- [ ] `disable_functions` configured for unused dangerous functions
+- [ ] `session.sid_length >= 128`, custom `session.name`
 - [ ] No `$_REQUEST` usage — specify input source
+- [ ] No `unserialize()` on user data — use JSON
+- [ ] `escapeshellarg()` or array format for process execution
+- [ ] Regex patterns tested for catastrophic backtracking (ReDoS)
+- [ ] cURL: `CURLOPT_SSL_VERIFYPEER` enabled in production
+- [ ] `filter_var()` / `filter_input()` for input validation

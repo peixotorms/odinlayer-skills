@@ -1,6 +1,6 @@
 ---
 name: php-guidelines
-description: Use when writing, reviewing, refactoring, building, or deploying PHP code. Covers type system, strict types, type juggling pitfalls, OOP (classes, interfaces, traits, enums), modern PHP 8.x features (match, named args, readonly, property hooks, pipe operator, attributes), functions, generators, fibers, namespaces, error handling, performance, version migration, testing, build/deploy workflow, and anti-patterns. For security see php-security.
+description: Use when writing, reviewing, refactoring, building, or deploying PHP code. Covers type system, strict types, OOP (classes, interfaces, traits, enums), modern PHP 8.x features (match, readonly, property hooks, pipe operator), JSON handling, DI and SOLID principles, PSR standards, Composer, functions, generators, fibers, namespaces, error handling, attributes, arrays, strings, version migration (8.0-8.5), testing, build/deploy, and anti-patterns. For security see php-security; for performance see php-performance; for networking/regex see php-networking; for internationalization see php-intl.
 ---
 
 # PHP Guidelines
@@ -275,6 +275,89 @@ ChildClass::create(); // Returns ChildClass, not ParentClass
 | `__clone()` runs AFTER shallow copy | Use to deep-copy nested objects |
 | Exceptions in `__destruct` during shutdown | Cause fatal error |
 
+## Dependency Injection & SOLID
+
+### Dependency Injection
+
+```php
+// BAD: Hard-coded dependency — untestable
+class UserService {
+    private Database $db;
+    public function __construct() {
+        $this->db = new MySqlDatabase();  // tight coupling
+    }
+}
+
+// GOOD: Inject dependency via constructor
+class UserService {
+    public function __construct(private DatabaseInterface $db) {}
+}
+
+// Usage — easy to swap implementations and mock in tests
+$service = new UserService(new MySqlDatabase());
+$service = new UserService(new SqliteDatabase());  // same interface
+$service = new UserService($mockDb);               // testing
+```
+
+| Principle | Rule |
+|-----------|------|
+| **S** — Single Responsibility | One class = one reason to change |
+| **O** — Open/Closed | Open for extension, closed for modification — use interfaces |
+| **L** — Liskov Substitution | Subtypes must be substitutable for their base types |
+| **I** — Interface Segregation | Many small interfaces > one large interface |
+| **D** — Dependency Inversion | Depend on abstractions (interfaces), not concretions |
+
+| Rule | Detail |
+|------|--------|
+| Constructor injection | Preferred — makes dependencies explicit |
+| Type-hint interfaces | Not concrete classes — enables swapping |
+| DI container ≠ DI | Containers are optional convenience; DI is the pattern |
+| Avoid Service Locator | Hiding dependencies inside a container = anti-pattern |
+| `final` by default | Mark classes `final` unless designed for extension |
+
+## PSR Standards & Composer
+
+### PSR Standards
+
+| Standard | Purpose |
+|----------|---------|
+| **PSR-1** | Basic coding standard — `<?php` tag, UTF-8, class naming |
+| **PSR-4** | Autoloading — namespace maps to directory structure |
+| **PSR-12** / **PER** | Extended coding style — indentation, braces, spacing |
+| **PSR-3** | Logger interface (`Psr\Log\LoggerInterface`) |
+| **PSR-7** | HTTP message interfaces (request/response) |
+| **PSR-11** | Container interface (`Psr\Container\ContainerInterface`) |
+| **PSR-15** | HTTP handlers and middleware |
+
+### Composer
+
+```bash
+# Initialize project
+composer init
+
+# Add dependency
+composer require monolog/monolog
+
+# Install from lock file (deployment — deterministic)
+composer install --no-dev --optimize-autoloader
+
+# Update to latest compatible versions (development)
+composer update
+
+# Autoload — include once at entry point
+require 'vendor/autoload.php';
+```
+
+| Rule | Detail |
+|------|--------|
+| Commit `composer.lock` | Ensures identical versions across team/environments |
+| `composer install` in production | Never `composer update` — use lock file |
+| `--no-dev` in production | Exclude dev dependencies |
+| `--optimize-autoloader` / `-o` | Converts PSR-4/PSR-0 to classmap for speed |
+| PSR-4 autoloading | Namespace `App\` → directory `src/` |
+| `composer dump-autoload -o` | Regenerate optimized autoload after changes |
+| Security auditing | `composer audit` checks for known vulnerabilities |
+
 ## Modern PHP 8.x Patterns
 
 ### Match Expression (PHP 8.0+)
@@ -546,20 +629,39 @@ $sql = <<<'SQL'
 | `===` for string comparison | `==` does numeric coercion on numeric strings |
 | Negative offset (7.1+) | `$str[-1]` for last character |
 
-## Performance
+## JSON
 
-| Technique | Detail |
-|-----------|--------|
-| OPcache | Caches compiled bytecode — enable always |
-| Preloading (PHP 7.4+) | `opcache.preload` loads framework at startup |
-| JIT (PHP 8.0+) | `opcache.jit_buffer_size=256M` for compute-heavy |
-| Generators for large data | `yield` instead of building arrays in memory |
-| Pre-size arrays | `SplFixedArray` for large fixed-size datasets |
-| String building | `implode()` or output buffering, not `.=` in loop |
-| `isset()` over `array_key_exists()` | Faster for most cases |
-| Typed properties | Enable engine optimizations |
-| Autoload optimization | `composer dump-autoload -o` for production |
-| Profile before optimizing | Xdebug, Blackfire, or Tideways — don't guess |
+```php
+// Encode — always use JSON_THROW_ON_ERROR (PHP 7.3+)
+$json = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+// Decode — assoc arrays are faster than objects for data access
+$data = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
+
+// Validate without decoding (PHP 8.3+)
+if (json_validate($json)) { /* valid */ }
+
+// Large integers — prevent precision loss
+$data = json_decode($json, true, 512, JSON_BIGINT_AS_STRING);
+```
+
+| Flag | Effect |
+|------|--------|
+| `JSON_THROW_ON_ERROR` | Throw `JsonException` instead of returning `false`/`null` |
+| `JSON_UNESCAPED_UNICODE` | Don't escape UTF-8 chars — smaller output |
+| `JSON_UNESCAPED_SLASHES` | Don't escape `/` — cleaner URLs |
+| `JSON_PRESERVE_ZERO_FRACTION` | Keep `10.0` instead of `10` |
+| `JSON_BIGINT_AS_STRING` | Decode large ints as strings (prevent precision loss) |
+| `JSON_NUMERIC_CHECK` | Convert numeric strings to numbers — **use cautiously** (phone numbers!) |
+| `JSON_INVALID_UTF8_SUBSTITUTE` | Replace broken UTF-8 with `U+FFFD` (PHP 7.2+) |
+| `JSON_PRETTY_PRINT` | Human-readable output — dev/debug only |
+
+| Rule | Detail |
+|------|--------|
+| Always `JSON_THROW_ON_ERROR` | Never check `json_last_error()` manually |
+| Input must be UTF-8 | `mb_convert_encoding()` first if unsure |
+| `json_validate()` (8.3+) | Faster than decode when you just need validity |
+| Assoc arrays over objects | `json_decode($json, true)` — faster property access |
 
 ## Testing
 
@@ -698,4 +800,4 @@ chown -R <user>:<group> .
 | `extract()` | Explicit assignment |
 | Implicit nullable param | Explicit `?Type` |
 | `(boolean)` cast | `(bool)` |
-| `display_errors` in production | `log_errors` only |
+| `json_last_error()` checking | `JSON_THROW_ON_ERROR` flag |
