@@ -1,6 +1,6 @@
 ---
 name: go-guidelines
-description: Use when writing, reviewing, or refactoring Go code. Covers formatting, naming conventions, control structures, functions, multiple returns, defer, data types (slices, maps, arrays), composite literals, new vs make, methods, pointer vs value receivers, interfaces, embedding, type assertions, initialization, iota, and common anti-patterns.
+description: Use when writing, reviewing, or refactoring Go code. Covers formatting, naming, control structures, functions, defer, data types, methods, interfaces, embedding, initialization, functional options pattern, constructor validation, package organization, generics, testing patterns, linting, and common anti-patterns.
 ---
 
 # Go Guidelines
@@ -386,6 +386,309 @@ func init() {
 | Multiple `init()` per file allowed | Run in order |
 | Use for verification | Not complex logic |
 
+## Functional Options Pattern
+
+The standard Go pattern for flexible, extensible configuration:
+
+```go
+// Option type — a function that modifies the target
+type Option func(*Server)
+
+func WithPort(port int) Option {
+    return func(s *Server) { s.port = port }
+}
+
+func WithTimeout(d time.Duration) Option {
+    return func(s *Server) { s.timeout = d }
+}
+
+func WithLogger(l *log.Logger) Option {
+    return func(s *Server) { s.logger = l }
+}
+
+// Constructor applies options over defaults
+func NewServer(opts ...Option) *Server {
+    s := &Server{
+        port:    8080,           // sensible defaults
+        timeout: 30 * time.Second,
+        logger:  log.Default(),
+    }
+    for _, opt := range opts {
+        opt(s)
+    }
+    return s
+}
+
+// Usage — clean, self-documenting, extensible
+srv := NewServer(
+    WithPort(9090),
+    WithTimeout(60 * time.Second),
+)
+```
+
+| When to use | When NOT to use |
+|-------------|-----------------|
+| 3+ optional configuration fields | 1-2 required parameters — just use arguments |
+| Library APIs (callers shouldn't know internals) | Internal structs with few fields — use literal |
+| Defaults should work out of the box | Config loaded from file — use a config struct |
+
+### With Generics (Go 1.18+)
+
+```go
+type AgentOption[T any] func(*Agent[T])
+
+func WithName[T any](name string) AgentOption[T] {
+    return func(a *Agent[T]) { a.name = name }
+}
+
+func NewAgent[T any](opts ...AgentOption[T]) (*Agent[T], error) {
+    a := &Agent[T]{name: "default"}
+    for _, opt := range opts {
+        opt(a)
+    }
+    return a, a.validate()
+}
+```
+
+---
+
+## Constructor & Validation
+
+```go
+// NewX returns (*X, error) — validate at construction time
+func NewServer(opts ...Option) (*Server, error) {
+    s := &Server{port: 8080}
+    for _, opt := range opts {
+        opt(s)
+    }
+    if err := s.validate(); err != nil {
+        return nil, fmt.Errorf("invalid server config: %w", err)
+    }
+    return s, nil
+}
+
+func (s *Server) validate() error {
+    if s.port <= 0 || s.port > 65535 {
+        return fmt.Errorf("port %d out of range", s.port)
+    }
+    if s.timeout <= 0 {
+        return fmt.Errorf("timeout must be positive")
+    }
+    return nil
+}
+```
+
+| Pattern | When |
+|---------|------|
+| `NewX() *X` | Simple construction, always succeeds |
+| `NewX() (*X, error)` | Validation needed, may fail |
+| `MustX() *X` | Panics on error — only for compile-time constants or tests |
+
+---
+
+## Package Organization
+
+```
+// Domain-based (preferred for applications)
+myapp/
+├── user/           # User domain
+│   ├── user.go
+│   ├── store.go
+│   └── handler.go
+├── order/          # Order domain
+│   ├── order.go
+│   └── service.go
+├── internal/       # Private packages
+│   └── db/
+└── cmd/
+    └── server/main.go
+
+// Flat (for libraries and small services)
+mylib/
+├── mylib.go        # Primary types and functions
+├── option.go       # Options pattern
+├── mylib_test.go
+└── internal/       # Implementation details
+```
+
+| Rule | Detail |
+|------|--------|
+| `cmd/` | Entry points — `main` packages |
+| `internal/` | Private — compiler-enforced, cannot be imported outside module |
+| `pkg/` | Optional — public library code (some projects skip this) |
+| Avoid `models/`, `utils/`, `helpers/` | Too generic — organize by domain |
+| One package = one purpose | If you can't name it in one word, split it |
+
+---
+
+## Generics (Go 1.18+)
+
+```go
+// Type constraints
+func Map[T, U any](s []T, f func(T) U) []U {
+    result := make([]U, len(s))
+    for i, v := range s {
+        result[i] = f(v)
+    }
+    return result
+}
+
+// Constraint interfaces
+type Number interface {
+    ~int | ~int64 | ~float64
+}
+
+func Sum[T Number](values []T) T {
+    var total T
+    for _, v := range values {
+        total += v
+    }
+    return total
+}
+```
+
+| Use generics for | Don't use generics for |
+|------------------|------------------------|
+| Type-safe collections/containers | Simple functions that work with `interface{}` |
+| Algorithm reuse across types | When only one type is ever used |
+| Reducing code duplication | When it makes code harder to read |
+| Options/builder patterns | Premature abstraction |
+
+---
+
+## Testing
+
+### Table-Driven Tests
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name     string
+        a, b     int
+        expected int
+    }{
+        {"positive", 1, 2, 3},
+        {"zero", 0, 0, 0},
+        {"negative", -1, 1, 0},
+    }
+
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            got := Add(tt.a, tt.b)
+            if got != tt.expected {
+                t.Errorf("Add(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.expected)
+            }
+        })
+    }
+}
+```
+
+### Testing Patterns
+
+```go
+// Parallel tests
+func TestSomething(t *testing.T) {
+    t.Parallel()  // runs concurrently with other parallel tests
+    // ...
+}
+
+// Test helpers
+func setupTestDB(t *testing.T) *DB {
+    t.Helper()  // marks as helper — errors report caller's line
+    db := NewDB()
+    t.Cleanup(func() { db.Close() })  // automatic cleanup
+    return db
+}
+
+// testify assertions (popular third-party)
+import "github.com/stretchr/testify/assert"
+import "github.com/stretchr/testify/require"
+
+func TestUser(t *testing.T) {
+    user, err := GetUser(1)
+    require.NoError(t, err)          // fails test immediately
+    assert.Equal(t, "Alice", user.Name)  // continues on failure
+}
+```
+
+| Testing rule | Detail |
+|--------------|--------|
+| `_test.go` suffix | Test files, excluded from production builds |
+| `Test` prefix | Functions must start with `TestXxx(t *testing.T)` |
+| `t.Run` for subtests | Enables selective running: `go test -run TestAdd/positive` |
+| `t.Helper()` | Marks helper functions for better error locations |
+| `t.Cleanup()` | Deferred cleanup that runs after test completes |
+| `t.Parallel()` | Opt-in parallel execution within a test |
+| `testdata/` directory | Test fixtures, ignored by Go tooling |
+
+---
+
+## Static Verification
+
+### golangci-lint
+
+```bash
+# Install
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+
+# Run
+golangci-lint run ./...
+```
+
+### Recommended `.golangci.yml`
+
+```yaml
+linters:
+  enable:
+    # Correctness
+    - errcheck         # unchecked errors
+    - govet            # go vet
+    - staticcheck      # advanced analysis
+    - unused           # unused code
+    - ineffassign      # ineffectual assignments
+    - nilerr           # returning nil when err is non-nil
+
+    # Style
+    - misspell         # spelling mistakes
+    - whitespace       # unnecessary whitespace
+    - unconvert        # unnecessary conversions
+    - unparam          # unused function parameters
+    - usestdlibvars    # use stdlib constants (http.StatusOK)
+
+    # Safety
+    - gosec            # security issues
+    - sqlclosecheck    # unclosed SQL rows
+    - noctx            # HTTP requests without context
+    - wrapcheck        # errors not wrapped
+
+    # Quality
+    - prealloc         # suggest pre-allocations
+    - goconst          # repeated strings as constants
+    - nestif           # deeply nested ifs
+    - gocognit         # cognitive complexity
+    - funlen           # function length
+
+linters-settings:
+  funlen:
+    lines: 100
+  gocognit:
+    min-complexity: 20
+  nestif:
+    min-complexity: 5
+```
+
+### go vet & Race Detector
+
+```bash
+go vet ./...                 # built-in static analysis
+go test -race ./...          # detect data races at runtime
+go test -count=1 ./...       # disable test caching
+go test -cover ./...         # coverage report
+go test -coverprofile=c.out && go tool cover -html=c.out  # HTML coverage
+```
+
+---
+
 ## Anti-Pattern Quick Reference
 
 | Anti-Pattern | Better Alternative |
@@ -405,3 +708,10 @@ func init() {
 | Underscore imports without comment | Document why: `import _ "pkg" // register driver` |
 | `new(T)` when make is needed | `make` for slices/maps/channels |
 | Ignoring `append` return value | Always `s = append(s, ...)` |
+| Config struct with 10+ fields | Functional options pattern |
+| No validation in constructor | `NewX() (*X, error)` with `validate()` |
+| `utils/` or `helpers/` package | Organize by domain, not by kind |
+| `models/` package for all types | Put types where they're used |
+| Not using `t.Helper()` | Test helpers report wrong line numbers |
+| Not using `t.Cleanup()` | Cleanup may not run on `t.Fatal()` |
+| `go test` without `-race` | Data races go undetected |
