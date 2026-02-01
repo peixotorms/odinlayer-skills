@@ -16,32 +16,40 @@ claude plugin install rust-skills
 
 ### rust-skills
 
-**Microsoft Pragmatic Rust Guidelines** — 48 production rules for writing high-quality Rust code.
+**Comprehensive Rust guidelines** — 11 focused skills covering core guidelines, unsafe/FFI, async/concurrency, performance, and 7 domain-specific areas.
 
 ```bash
 claude plugin install rust-skills
 ```
 
-**What's included:**
+One install gives you all 11 skills. Claude loads only the relevant ones per conversation based on what you're working on.
 
-| Component | Type | Description |
-|-----------|------|-------------|
-| `rust-guidelines` | Skill | Auto-activates when writing or reviewing Rust code. Quick-reference tables for all 48 guidelines covering error handling, safety, API design, documentation, naming, performance, library resilience, and logging. |
-| `/rust-review` | Command | Manually review any Rust file against the guidelines. Usage: `/rust-review src/main.rs` |
+**Skills included:**
 
-**Guidelines covered:**
+| Skill | Auto-activates when... |
+|-------|------------------------|
+| `rust-guidelines` | Writing or reviewing any Rust code — error handling, API design, types, ownership, lifetimes, smart pointers, generics, domain modeling, RAII, docs, naming, lints, ecosystem |
+| `rust-unsafe` | Writing unsafe code, FFI bindings, raw pointers, or C interop |
+| `rust-async` | Writing async/concurrent code with tokio, channels, mutexes, threads |
+| `rust-performance` | Optimizing performance — profiling, allocations, collections, Rayon, memory layout |
+| `rust-web` | Building web services with axum, actix-web, warp, or rocket |
+| `rust-cloud-native` | Building cloud-native apps, microservices, or Kubernetes deployments |
+| `rust-cli` | Building CLI tools or TUI apps with clap, ratatui |
+| `rust-fintech` | Building financial, trading, or payment systems |
+| `rust-embedded` | Developing embedded/no_std/bare-metal for microcontrollers |
+| `rust-iot` | Building IoT applications, sensor networks, or edge devices |
+| `rust-ml` | Building ML/AI inference pipelines |
 
-- **Error Handling** — `anyhow`/`eyre` for apps, canonical error structs for libs, panics only for bugs
-- **Safety** — `unsafe` only with valid reason (novel abstraction, perf, FFI), all code must be sound
-- **API Design** — `impl AsRef`, no smart pointers in public APIs, concrete > generics > `dyn Trait`, builders
-- **Documentation** — Summary < 15 words, canonical sections, module-level docs
-- **Naming** — No weasel words, magic values documented, `#[expect]` over `#[allow]`
-- **Performance** — mimalloc, profiling with criterion/divan, yield points in async
-- **Library Resilience** — Avoid statics, mockable I/O, no glob re-exports, additive features, `Send` types
-- **Logging** — Structured logging, named events, OTel conventions, redact sensitive data
-- **Static Verification** — Recommended compiler and clippy lint configuration
+**Command included:**
 
-Based on [Microsoft Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/).
+| Command | Description |
+|---------|-------------|
+| `/rust-review` | Review any Rust file against the guidelines. Usage: `/rust-review src/main.rs` |
+
+**Sources:**
+
+- [Microsoft Pragmatic Rust Guidelines](https://microsoft.github.io/rust-guidelines/) (48 production rules)
+- [ZhangHanDong/rust-skills](https://github.com/ZhangHanDong/rust-skills) (community patterns for ownership, concurrency, type-driven design, domain modeling)
 
 ## Managing Plugins
 

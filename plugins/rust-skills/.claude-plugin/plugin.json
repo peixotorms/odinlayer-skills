@@ -1,7 +1,7 @@
 {
   "name": "rust-skills",
-  "description": "Microsoft Pragmatic Rust Guidelines — 48 rules for production-quality Rust covering API design, safety, error handling, performance, documentation, and library architecture.",
-  "version": "1.0.0",
+  "description": "Comprehensive Rust guidelines — 11 focused skills covering core guidelines, unsafe/FFI, async/concurrency, performance, and domain-specific patterns for web, cloud-native, CLI, fintech, embedded, IoT, and ML.",
+  "version": "2.0.0",
   "author": {
     "name": "OdinPanel"
   }
